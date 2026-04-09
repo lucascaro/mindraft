@@ -96,8 +96,12 @@ export function IdeaCard({ idea }: { idea: Idea }) {
                 if (expanded && title !== idea.title) save({ title });
               }}
               readOnly={!expanded}
+              tabIndex={expanded ? 0 : -1}
               className="w-full text-base font-semibold border-none shadow-none px-0 focus-visible:ring-0 h-auto py-0 cursor-inherit bg-transparent"
-              onClick={(e) => e.stopPropagation()}
+              style={{ pointerEvents: expanded ? "auto" : "none" }}
+              onClick={(e) => {
+                if (expanded) e.stopPropagation();
+              }}
             />
           </div>
 
