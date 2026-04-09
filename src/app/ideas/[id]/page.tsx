@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Trash2, X } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, X } from "lucide-react";
 import { Idea, IdeaStatus } from "@/lib/types";
 
 export default function IdeaDetailPage({
@@ -67,14 +67,18 @@ export default function IdeaDetailPage({
     router.push("/ideas");
   };
 
+  const addTag = () => {
+    const newTag = tagInput.trim().toLowerCase();
+    if (newTag && !tags.includes(newTag)) {
+      setTags([...tags, newTag]);
+    }
+    setTagInput("");
+  };
+
   const handleAddTag = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && tagInput.trim()) {
       e.preventDefault();
-      const newTag = tagInput.trim().toLowerCase();
-      if (!tags.includes(newTag)) {
-        setTags([...tags, newTag]);
-      }
-      setTagInput("");
+      addTag();
     }
   };
 
@@ -125,23 +129,34 @@ export default function IdeaDetailPage({
         />
 
         <div>
-          <div className="flex flex-wrap gap-1 mb-2">
+          <div className="flex flex-wrap gap-2 mb-2">
             {tags.map((tag) => (
-              <Badge key={tag} variant="secondary" className="gap-1">
+              <Badge key={tag} variant="secondary" className="gap-1 py-1 px-2.5 text-sm">
                 {tag}
-                <button onClick={() => removeTag(tag)}>
-                  <X className="h-3 w-3" />
+                <button className="ml-1 p-0.5" onClick={() => removeTag(tag)}>
+                  <X className="h-3.5 w-3.5" />
                 </button>
               </Badge>
             ))}
           </div>
-          <Input
-            value={tagInput}
-            onChange={(e) => setTagInput(e.target.value)}
-            onKeyDown={handleAddTag}
-            placeholder="Add a tag and press Enter"
-            className="text-sm"
-          />
+          <div className="flex gap-2">
+            <Input
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={handleAddTag}
+              placeholder="Add a tag"
+              className="text-sm flex-1"
+            />
+            <Button
+              type="button"
+              size="icon"
+              variant="outline"
+              onClick={addTag}
+              disabled={!tagInput.trim()}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         <Button onClick={handleSave} disabled={saving} className="w-full">
