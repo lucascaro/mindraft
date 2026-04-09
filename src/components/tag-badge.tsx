@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTagColors } from "@/lib/tag-color-context";
@@ -30,10 +30,16 @@ export function TagBadge({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerAlign, setPickerAlign] = useState<"left" | "right">("left");
   const pickerRef = useRef<HTMLDivElement>(null);
+  const colorTriggerRef = useRef<HTMLButtonElement>(null);
 
   const colorClasses = getColorClasses(tag);
   const activeKey = getColorKey(tag);
   const swatchColor = getSwatchColor(tag);
+
+  const closePicker = useCallback(() => {
+    setPickerOpen(false);
+    colorTriggerRef.current?.focus();
+  }, []);
 
   // Close picker on outside click.
   useEffect(() => {
@@ -47,6 +53,27 @@ export function TagBadge({
     return () => document.removeEventListener("mousedown", handler);
   }, [pickerOpen]);
 
+  // Close picker on Escape key.
+  useEffect(() => {
+    if (!pickerOpen) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        closePicker();
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [pickerOpen, closePicker]);
+
+  // Focus active (or first) swatch when picker opens.
+  useEffect(() => {
+    if (!pickerOpen || !pickerRef.current) return;
+    const active = pickerRef.current.querySelector<HTMLButtonElement>('[aria-pressed="true"]');
+    const first = pickerRef.current.querySelector<HTMLButtonElement>("button");
+    (active ?? first)?.focus();
+  }, [pickerOpen]);
+
   // Flip popover to the left if it overflows the right edge of the viewport.
   useEffect(() => {
     if (!pickerOpen || !pickerRef.current) return;
@@ -54,20 +81,36 @@ export function TagBadge({
     setPickerAlign(rect.right > window.innerWidth ? "right" : "left");
   }, [pickerOpen]);
 
+  const badgeProps = onClick
+    ? {
+        role: "button" as const,
+        tabIndex: 0,
+        onClick,
+        onKeyDown: (e: React.KeyboardEvent) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onClick(e as unknown as React.MouseEvent);
+          }
+        },
+        "aria-label": `Filter by tag ${tag}`,
+      }
+    : {};
+
   return (
     <span className="relative inline-flex">
       <span
-        onClick={onClick}
+        {...badgeProps}
         className={cn(
           "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold",
           colorClasses,
-          onClick && "cursor-pointer",
+          onClick && "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
           className
         )}
       >
         {/* Color dot — opens picker in edit mode */}
         {editable && (
           <button
+            ref={colorTriggerRef}
             type="button"
             onClick={(e) => {
               e.stopPropagation();
@@ -76,6 +119,8 @@ export function TagBadge({
             className="h-2.5 w-2.5 rounded-full shrink-0 opacity-60 hover:opacity-100 transition-opacity focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             style={{ backgroundColor: swatchColor }}
             aria-label={`Change color for #${tag}`}
+            aria-expanded={pickerOpen}
+            aria-haspopup="dialog"
           />
         )}
 
@@ -100,6 +145,8 @@ export function TagBadge({
       {pickerOpen && (
         <div
           ref={pickerRef}
+          role="dialog"
+          aria-label="Choose tag color"
           className={cn(
             "absolute top-full mt-1.5 z-50 p-2.5 rounded-lg border shadow-lg bg-card w-max",
             pickerAlign === "right" ? "right-0" : "left-0"
@@ -119,7 +166,7 @@ export function TagBadge({
                   type="button"
                   onClick={() => {
                     setTagColor(tag, color.key as ColorKey);
-                    setPickerOpen(false);
+                    closePicker();
                   }}
                   className={cn(
                     "h-6 w-6 rounded-full transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",

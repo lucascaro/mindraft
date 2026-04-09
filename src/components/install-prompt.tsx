@@ -35,13 +35,14 @@ export function InstallPrompt() {
   // Android / Chrome — native prompt
   if (deferredPrompt) {
     return (
-      <div className="fixed bottom-0 inset-x-0 p-4 bg-card border-t z-50">
+      <div role="status" aria-live="polite" className="fixed bottom-0 inset-x-0 p-4 bg-card border-t z-50">
         <div className="mx-auto max-w-2xl flex items-center justify-between gap-3">
           <p className="text-sm font-medium">Install Mindraft for quick access</p>
           <div className="flex gap-2">
             <Button
               size="sm"
               variant="ghost"
+              aria-label="Dismiss install prompt"
               onClick={() => setDismissed(true)}
             >
               <X className="h-4 w-4" />
@@ -64,7 +65,7 @@ export function InstallPrompt() {
   // iOS — no native prompt, show manual instructions
   if (isIos) {
     return (
-      <div className="fixed bottom-0 inset-x-0 p-4 bg-card border-t z-50">
+      <div role="status" aria-live="polite" className="fixed bottom-0 inset-x-0 p-4 bg-card border-t z-50">
         <div className="mx-auto max-w-2xl flex items-center justify-between gap-3">
           <p className="text-sm">
             Tap <strong>Share</strong> then <strong>Add to Home Screen</strong> to install
@@ -72,6 +73,7 @@ export function InstallPrompt() {
           <Button
             size="sm"
             variant="ghost"
+            aria-label="Dismiss install prompt"
             onClick={() => setDismissed(true)}
           >
             <X className="h-4 w-4" />

@@ -47,6 +47,7 @@ export function IdeaFilterBar({
               placeholder="Search ideas…"
               value={filters.search}
               onChange={(e) => onSearchChange(e.target.value)}
+              aria-label="Search ideas"
               className="pl-9"
             />
           </div>
@@ -73,7 +74,7 @@ export function IdeaFilterBar({
 
           {/* Tag pills */}
           {availableTags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5" aria-label="Filter by tag">
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter by tag">
               {availableTags.map((tag) => {
                 const active = filters.tags.includes(tag);
                 return (

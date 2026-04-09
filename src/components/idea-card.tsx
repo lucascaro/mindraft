@@ -129,6 +129,20 @@ export function IdeaCard({
           : "hover:shadow-md cursor-pointer"
       }`}
       onClick={expanded ? undefined : onExpand}
+      role={expanded ? undefined : "button"}
+      tabIndex={expanded ? undefined : 0}
+      aria-expanded={expanded}
+      aria-label={expanded ? undefined : idea.title}
+      onKeyDown={
+        expanded
+          ? undefined
+          : (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onExpand();
+              }
+            }
+      }
     >
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
@@ -142,6 +156,7 @@ export function IdeaCard({
               }}
               readOnly={!expanded}
               tabIndex={expanded ? 0 : -1}
+              aria-label="Idea title"
               className="w-full text-base font-semibold border-none shadow-none px-0 focus-visible:ring-0 h-auto py-0 cursor-inherit bg-transparent"
               style={{ pointerEvents: expanded ? "auto" : "none" }}
               onClick={(e) => {
@@ -174,6 +189,7 @@ export function IdeaCard({
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8"
+                aria-label="Close idea"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleClose();
@@ -245,6 +261,7 @@ export function IdeaCard({
                 if (body !== idea.body) save({ body });
               }}
               placeholder="Expand on your idea..."
+              aria-label="Idea body"
               className="min-h-[100px] resize-y text-sm"
               onClick={(e) => e.stopPropagation()}
             />
@@ -271,6 +288,7 @@ export function IdeaCard({
                     }
                   }}
                   placeholder="Add a tag"
+                  aria-label="New tag name"
                   className="text-sm flex-1"
                   onClick={(e) => e.stopPropagation()}
                 />
@@ -278,6 +296,7 @@ export function IdeaCard({
                   type="button"
                   size="icon"
                   variant="outline"
+                  aria-label="Add tag"
                   onClick={(e) => {
                     e.stopPropagation();
                     addTag();

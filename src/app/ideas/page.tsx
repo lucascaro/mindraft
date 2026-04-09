@@ -50,7 +50,8 @@ export default function IdeasPage() {
   const showSkeleton = loading || !user || ideas === null;
 
   return (
-    <div
+    <main
+      id="main-content"
       className="mx-auto max-w-2xl"
       style={{
         width: "100%",
@@ -197,12 +198,12 @@ export default function IdeasPage() {
           </div>
         ) : ideas.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
-            <Lightbulb className="h-12 w-12 mx-auto mb-3 opacity-30" />
+            <Lightbulb aria-hidden="true" className="h-12 w-12 mx-auto mb-3 opacity-30" />
             <p>No ideas yet. Capture your first one above!</p>
           </div>
         ) : filteredIdeas.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
-            <Search className="h-10 w-10 mx-auto mb-3 opacity-30" />
+            <Search aria-hidden="true" className="h-10 w-10 mx-auto mb-3 opacity-30" />
             <p className="mb-4">No ideas match your filters.</p>
             <button
               onClick={clearAll}
@@ -212,19 +213,20 @@ export default function IdeasPage() {
             </button>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <ul style={{ display: "flex", flexDirection: "column", gap: 12, listStyle: "none", padding: 0, margin: 0 }}>
             {filteredIdeas.map((idea) => (
-              <IdeaCard
-                key={idea.id}
-                idea={idea}
-                expanded={expandedId === idea.id}
-                onExpand={() => setExpandedId(idea.id)}
-                onCollapse={() => setExpandedId(null)}
-              />
+              <li key={idea.id}>
+                <IdeaCard
+                  idea={idea}
+                  expanded={expandedId === idea.id}
+                  onExpand={() => setExpandedId(idea.id)}
+                  onCollapse={() => setExpandedId(null)}
+                />
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </div>
-    </div>
+    </main>
   );
 }
