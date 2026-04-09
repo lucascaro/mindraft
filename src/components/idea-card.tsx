@@ -122,11 +122,11 @@ export function IdeaCard({
             />
           </div>
 
-          {/* Right side: badge cross-fades with action buttons */}
-          <div className="relative flex items-center shrink-0">
+          {/* Right side: fixed width so title has stable width across cards */}
+          <div className="relative shrink-0 w-[96px] h-8 flex items-center justify-end">
             {/* Status badge — visible when collapsed */}
             <div
-              className="transition-opacity duration-200"
+              className="absolute right-0 transition-opacity duration-200"
               style={{ opacity: expanded ? 0 : 1, pointerEvents: expanded ? "none" : "auto" }}
             >
               <Badge

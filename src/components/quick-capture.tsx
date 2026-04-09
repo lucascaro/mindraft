@@ -28,13 +28,14 @@ export function QuickCapture({ userId }: { userId: string }) {
 
   return (
     <form onSubmit={handleSubmit} className="flex gap-2">
-      <Input
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        placeholder="What's on your mind?"
-        disabled={submitting}
-        className="flex-1"
-      />
+      <div className="flex-1 min-w-0">
+        <Input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="What's on your mind?"
+          disabled={submitting}
+        />
+      </div>
       <Button type="submit" size="icon" disabled={submitting || !title.trim()}>
         <Plus className="h-4 w-4" />
       </Button>
