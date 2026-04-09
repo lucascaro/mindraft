@@ -8,11 +8,14 @@ import { exportAllIdeas } from "@/lib/firestore";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
+  Bot,
+  Check,
+  Copy,
   Download,
-  Trash2,
   ExternalLink,
-  User as UserIcon,
   Loader2,
+  Trash2,
+  User as UserIcon,
 } from "lucide-react";
 
 export default function SettingsPage() {
@@ -22,6 +25,26 @@ export default function SettingsPage() {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copiedUrl, setCopiedUrl] = useState(false);
+  const [copiedConfig, setCopiedConfig] = useState(false);
+
+  const mcpUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/api/mcp`
+      : "/api/mcp";
+
+  const claudeConfig = JSON.stringify(
+    { mcpServers: { mindraft: { url: mcpUrl } } },
+    null,
+    2
+  );
+
+  function copyText(text: string, setCopied: (v: boolean) => void) {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
 
   useEffect(() => {
     if (!loading && !user) {
@@ -170,6 +193,85 @@ export default function SettingsPage() {
               </>
             )}
           </Button>
+        </section>
+
+        {/* AI Agent / MCP */}
+        <section className="rounded-lg border bg-card p-5">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-2">
+            <Bot className="h-4 w-4" />
+            AI Agent (MCP)
+          </h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Connect Claude or any MCP-compatible AI agent to your ideas. The
+            agent can list, search, create, and update ideas — but cannot
+            permanently delete them.
+          </p>
+
+          <div className="space-y-3">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">
+                MCP endpoint URL
+              </p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 rounded bg-muted px-3 py-2 text-xs font-mono truncate">
+                  {mcpUrl}
+                </code>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={() => copyText(mcpUrl, setCopiedUrl)}
+                >
+                  {copiedUrl ? (
+                    <Check className="h-3.5 w-3.5" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">
+                Claude Desktop / claude_desktop_config.json
+              </p>
+              <div className="relative">
+                <pre className="rounded bg-muted px-3 py-2 text-xs font-mono overflow-x-auto pr-10">
+                  {claudeConfig}
+                </pre>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="absolute top-2 right-2 h-7 w-7 p-0"
+                  onClick={() => copyText(claudeConfig, setCopiedConfig)}
+                >
+                  {copiedConfig ? (
+                    <Check className="h-3.5 w-3.5" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">
+                Claude Code (CLI)
+              </p>
+              <pre className="rounded bg-muted px-3 py-2 text-xs font-mono overflow-x-auto">
+                {`claude mcp add mindraft --transport http ${mcpUrl}`}
+              </pre>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">
+                Cursor / other MCP clients
+              </p>
+              <pre className="rounded bg-muted px-3 py-2 text-xs font-mono overflow-x-auto whitespace-pre-wrap break-all">
+                {`{ "mcpServers": { "mindraft": { "url": "${mcpUrl}" } } }`}
+              </pre>
+            </div>
+          </div>
         </section>
 
         {/* About */}
