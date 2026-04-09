@@ -45,10 +45,11 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Run on everything except static assets and Next.js internals.
+    // Run on everything except static assets, Next.js internals, and
+    // pure JSON API routes (which don't render HTML and don't need a CSP nonce).
     {
       source:
-        "/((?!_next/static|_next/image|favicon.ico|icon.svg|manifest.json|sw.js).*)",
+        "/((?!_next/static|_next/image|favicon.ico|icon.svg|manifest.json|sw.js|api/.*).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },

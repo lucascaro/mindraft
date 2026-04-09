@@ -43,7 +43,7 @@ service cloud.firestore {
         return d.userId == prev.userId
           && d.createdAt == prev.createdAt
           && d.updatedAt is timestamp
-          && d.title is string && d.title.size() <= 500
+          && d.title is string && d.title.size() >= 1 && d.title.size() <= 500
           && d.body is string && d.body.size() <= 50000
           && validTags(d.tags)
           && validStatus(d.status)
