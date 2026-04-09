@@ -28,49 +28,55 @@ export default function IdeasPage() {
     return unsubscribe;
   }, [user]);
 
-  if (loading || !user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
-      </div>
-    );
-  }
+  const showSkeleton = loading || !user || ideas === null;
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
-      <header className="flex items-center justify-between mb-6">
+      <header className="flex items-center justify-between mb-6 h-10">
         <div className="flex items-center gap-2">
           <Lightbulb className="h-6 w-6 text-primary" />
           <h1 className="text-xl font-bold">Mindraft</h1>
         </div>
-        <div className="flex items-center gap-1">
-          <ThemeToggle />
-          <Button variant="ghost" size="icon" onClick={signOut}>
-            <LogOut className="h-4 w-4" />
-          </Button>
+        <div className="flex items-center gap-1 w-[80px] justify-end">
+          {user && (
+            <>
+              <ThemeToggle />
+              <Button variant="ghost" size="icon" onClick={signOut}>
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </>
+          )}
         </div>
       </header>
 
-      <div className="mb-6">
-        <QuickCapture userId={user.uid} />
+      <div className="mb-6 h-10">
+        {user && <QuickCapture userId={user.uid} />}
       </div>
 
-      {ideas === null ? (
-        <div className="flex justify-center py-12">
-          <div className="animate-pulse text-muted-foreground text-sm">Loading ideas...</div>
-        </div>
-      ) : ideas.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <Lightbulb className="h-12 w-12 mx-auto mb-3 opacity-30" />
-          <p>No ideas yet. Capture your first one above!</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {ideas.map((idea) => (
-            <IdeaCard key={idea.id} idea={idea} />
-          ))}
-        </div>
-      )}
+      <div className="min-h-[200px]">
+        {showSkeleton ? (
+          <div className="space-y-3">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="rounded-lg border bg-card h-24 animate-pulse"
+                style={{ opacity: 0.4 - i * 0.1 }}
+              />
+            ))}
+          </div>
+        ) : ideas.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <Lightbulb className="h-12 w-12 mx-auto mb-3 opacity-30" />
+            <p>No ideas yet. Capture your first one above!</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {ideas.map((idea) => (
+              <IdeaCard key={idea.id} idea={idea} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

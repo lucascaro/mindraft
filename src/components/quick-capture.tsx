@@ -33,7 +33,6 @@ export function QuickCapture({ userId }: { userId: string }) {
         onChange={(e) => setTitle(e.target.value)}
         placeholder="What's on your mind?"
         disabled={submitting}
-        autoFocus
         className="flex-1"
       />
       <Button type="submit" size="icon" disabled={submitting || !title.trim()}>
