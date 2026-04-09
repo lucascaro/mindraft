@@ -34,9 +34,16 @@ yarn-error.log*
 .env*
 !.env.example
 
+# firebase
+.firebase/
+
 # vercel
 .vercel
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# AI tooling
+.claude
+.claire

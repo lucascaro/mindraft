@@ -33,10 +33,11 @@ export function QuickCapture({ userId }: { userId: string }) {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="What's on your mind?"
+          aria-label="Capture new idea"
           disabled={submitting}
         />
       </div>
-      <Button type="submit" size="icon" disabled={submitting || !title.trim()}>
+      <Button type="submit" size="icon" aria-label="Save idea" disabled={submitting || !title.trim()}>
         <Plus className="h-4 w-4" />
       </Button>
     </form>

@@ -4,6 +4,7 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  setDoc,
   query,
   where,
   onSnapshot,
@@ -16,6 +17,7 @@ import { getDb } from "./firebase";
 import { Idea } from "./types";
 
 const COLLECTION = "ideas";
+const PREFS_COLLECTION = "userPrefs";
 
 type IdeaFilter = "active" | "archived";
 
@@ -107,6 +109,32 @@ export async function restoreIdea(id: string) {
 export async function deleteIdea(id: string) {
   return deleteDoc(doc(getDb(), COLLECTION, id));
 }
+
+// ── Tag color overrides ──────────────────────────────────────────────────────
+
+/** Subscribes to the user's tag→colorKey override map stored in userPrefs. */
+export function subscribeToTagColors(
+  userId: string,
+  callback: (overrides: Record<string, string>) => void
+) {
+  const ref = doc(getDb(), PREFS_COLLECTION, userId);
+  return onSnapshot(ref, (snap) => {
+    const data = snap.data();
+    callback((data?.tagColors as Record<string, string>) ?? {});
+  });
+}
+
+/** Persists a single tag→colorKey override for the user. */
+export async function setTagColor(
+  userId: string,
+  tag: string,
+  colorKey: string
+) {
+  const ref = doc(getDb(), PREFS_COLLECTION, userId);
+  return setDoc(ref, { tagColors: { [tag]: colorKey } }, { merge: true });
+}
+
+// ── Export / bulk operations ─────────────────────────────────────────────────
 
 /**
  * One-shot fetch of every idea (active and archived) owned by the user.

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { TagBadge } from "@/components/tag-badge";
 import { Archive, ArchiveRestore, Plus, Trash2, X } from "lucide-react";
 import { updateIdea, deleteIdea, archiveIdea, restoreIdea } from "@/lib/firestore";
 import { Idea, IdeaStatus, IDEA_STATUSES } from "@/lib/types";
@@ -77,6 +78,19 @@ export function IdeaCard({
     }
   }, [idea, expanded]);
 
+  // Cmd+Enter (or Ctrl+Enter) saves and closes the card.
+  useEffect(() => {
+    if (!expanded) return;
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        e.preventDefault();
+        onCollapse();
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [expanded, onCollapse]);
+
   const measure = useCallback(() => {
     if (editRef.current) {
       setEditHeight(editRef.current.scrollHeight);
@@ -115,6 +129,20 @@ export function IdeaCard({
           : "hover:shadow-md cursor-pointer"
       }`}
       onClick={expanded ? undefined : onExpand}
+      role={expanded ? undefined : "button"}
+      tabIndex={expanded ? undefined : 0}
+      aria-expanded={expanded}
+      aria-label={expanded ? undefined : idea.title}
+      onKeyDown={
+        expanded
+          ? undefined
+          : (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onExpand();
+              }
+            }
+      }
     >
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
@@ -128,6 +156,7 @@ export function IdeaCard({
               }}
               readOnly={!expanded}
               tabIndex={expanded ? 0 : -1}
+              aria-label="Idea title"
               className="w-full text-base font-semibold border-none shadow-none px-0 focus-visible:ring-0 h-auto py-0 cursor-inherit bg-transparent"
               style={{ pointerEvents: expanded ? "auto" : "none" }}
               onClick={(e) => {
@@ -160,6 +189,7 @@ export function IdeaCard({
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8"
+                aria-label="Close idea"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleClose();
@@ -189,9 +219,7 @@ export function IdeaCard({
           {idea.tags.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {idea.tags.map((tag) => (
-                <Badge key={tag} variant="secondary" className="text-xs">
-                  {tag}
-                </Badge>
+                <TagBadge key={tag} tag={tag} />
               ))}
             </div>
           )}
@@ -233,6 +261,7 @@ export function IdeaCard({
                 if (body !== idea.body) save({ body });
               }}
               placeholder="Expand on your idea..."
+              aria-label="Idea body"
               className="min-h-[100px] resize-y text-sm"
               onClick={(e) => e.stopPropagation()}
             />
@@ -240,22 +269,12 @@ export function IdeaCard({
             <div>
               <div className="flex flex-wrap gap-2 mb-2">
                 {tags.map((tag) => (
-                  <Badge
+                  <TagBadge
                     key={tag}
-                    variant="secondary"
-                    className="gap-1 py-1 px-2.5 text-sm"
-                  >
-                    {tag}
-                    <button
-                      className="ml-1 p-0.5"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeTag(tag);
-                      }}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </Badge>
+                    tag={tag}
+                    editable
+                    onRemove={() => removeTag(tag)}
+                  />
                 ))}
               </div>
               <div className="flex gap-2">
@@ -269,6 +288,7 @@ export function IdeaCard({
                     }
                   }}
                   placeholder="Add a tag"
+                  aria-label="New tag name"
                   className="text-sm flex-1"
                   onClick={(e) => e.stopPropagation()}
                 />
@@ -276,6 +296,7 @@ export function IdeaCard({
                   type="button"
                   size="icon"
                   variant="outline"
+                  aria-label="Add tag"
                   onClick={(e) => {
                     e.stopPropagation();
                     addTag();
