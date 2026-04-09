@@ -10,8 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Sparkles, Trash2, X } from "lucide-react";
+import { ArrowLeft, Trash2, X } from "lucide-react";
 import { Idea, IdeaStatus } from "@/lib/types";
 
 export default function IdeaDetailPage({
@@ -29,8 +28,6 @@ export default function IdeaDetailPage({
   const [tagInput, setTagInput] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [status, setStatus] = useState<IdeaStatus>("raw");
-  const [refining, setRefining] = useState(false);
-  const [aiSuggestions, setAiSuggestions] = useState<string | undefined>();
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -48,7 +45,6 @@ export default function IdeaDetailPage({
         setBody(data.body);
         setTags(data.tags);
         setStatus(data.status);
-        setAiSuggestions(data.aiSuggestions);
       }
       setLoading(false);
     });
@@ -63,36 +59,6 @@ export default function IdeaDetailPage({
       console.error("Failed to save:", err);
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleRefine = async () => {
-    setRefining(true);
-    try {
-      await updateIdea(id, { status: "refining" });
-      setStatus("refining");
-
-      const res = await fetch("/api/refine", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, body }),
-      });
-
-      if (!res.ok) throw new Error("Refinement failed");
-
-      const data = await res.json();
-      setAiSuggestions(data.suggestions);
-      await updateIdea(id, {
-        aiSuggestions: data.suggestions,
-        status: "developed",
-      });
-      setStatus("developed");
-    } catch (err) {
-      console.error("Refinement failed:", err);
-      await updateIdea(id, { status: "raw" });
-      setStatus("raw");
-    } finally {
-      setRefining(false);
     }
   };
 
@@ -138,20 +104,9 @@ export default function IdeaDetailPage({
         <Button variant="ghost" size="sm" onClick={() => router.push("/ideas")}>
           <ArrowLeft className="h-4 w-4 mr-1" /> Back
         </Button>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefine}
-            disabled={refining}
-          >
-            <Sparkles className="h-4 w-4 mr-1" />
-            {refining ? "Refining..." : "AI Refine"}
-          </Button>
-          <Button variant="ghost" size="icon" onClick={handleDelete}>
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
-        </div>
+        <Button variant="ghost" size="icon" onClick={handleDelete}>
+          <Trash2 className="h-4 w-4 text-destructive" />
+        </Button>
       </header>
 
       <div className="space-y-4">
@@ -192,21 +147,6 @@ export default function IdeaDetailPage({
         <Button onClick={handleSave} disabled={saving} className="w-full">
           {saving ? "Saving..." : "Save Changes"}
         </Button>
-
-        {aiSuggestions && (
-          <Card className="mt-6">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Sparkles className="h-4 w-4" /> AI Suggestions
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap">
-                {aiSuggestions}
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
     </div>
   );

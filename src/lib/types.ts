@@ -1,6 +1,6 @@
 import { Timestamp } from "firebase/firestore";
 
-export type IdeaStatus = "raw" | "refining" | "developed";
+export type IdeaStatus = "raw" | "developed";
 
 export type Idea = {
   id: string;
@@ -10,6 +10,5 @@ export type Idea = {
   status: IdeaStatus;
   createdAt: Timestamp;
   updatedAt: Timestamp;
-  aiSuggestions?: string;
   userId: string;
 };
