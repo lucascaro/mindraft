@@ -14,6 +14,7 @@ export default function ArchivePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [ideas, setIdeas] = useState<Idea[] | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -63,7 +64,14 @@ export default function ArchivePage() {
         ) : (
           <div className="space-y-3">
             {ideas.map((idea) => (
-              <IdeaCard key={idea.id} idea={idea} mode="archived" />
+              <IdeaCard
+                key={idea.id}
+                idea={idea}
+                mode="archived"
+                expanded={expandedId === idea.id}
+                onExpand={() => setExpandedId(idea.id)}
+                onCollapse={() => setExpandedId(null)}
+              />
             ))}
           </div>
         )}

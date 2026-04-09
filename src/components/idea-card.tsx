@@ -19,11 +19,16 @@ const statusColors: Record<string, string> = {
 export function IdeaCard({
   idea,
   mode = "active",
+  expanded,
+  onExpand,
+  onCollapse,
 }: {
   idea: Idea;
   mode?: "active" | "archived";
+  expanded: boolean;
+  onExpand: () => void;
+  onCollapse: () => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
   const [title, setTitle] = useState(idea.title);
   const [body, setBody] = useState(idea.body);
   const [tags, setTags] = useState(idea.tags);
@@ -33,15 +38,24 @@ export function IdeaCard({
   const editRef = useRef<HTMLDivElement>(null);
   const [editHeight, setEditHeight] = useState(0);
 
+  // When this card collapses (either by user or by another card opening),
+  // flush pending edits to Firestore and reset to the server state.
   useEffect(() => {
     if (!expanded) {
+      const changes: Partial<Omit<Idea, "id" | "createdAt" | "userId">> = {};
+      if (title !== idea.title) changes.title = title;
+      if (body !== idea.body) changes.body = body;
+      if (status !== idea.status) changes.status = status;
+      if (Object.keys(changes).length > 0) save(changes);
+
       setTitle(idea.title);
       setBody(idea.body);
       setTags(idea.tags);
       setStatus(idea.status);
       setConfirmingDelete(false);
     }
-  }, [idea, expanded]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded, idea]);
 
   const measure = useCallback(() => {
     if (editRef.current) {
@@ -60,12 +74,7 @@ export function IdeaCard({
   };
 
   const handleClose = () => {
-    const changes: Partial<Omit<Idea, "id" | "createdAt" | "userId">> = {};
-    if (title !== idea.title) changes.title = title;
-    if (body !== idea.body) changes.body = body;
-    if (status !== idea.status) changes.status = status;
-    if (Object.keys(changes).length > 0) save(changes);
-    setExpanded(false);
+    onCollapse();
   };
 
   const addTag = () => {
@@ -91,7 +100,7 @@ export function IdeaCard({
           ? "shadow-md border-primary/30"
           : "hover:shadow-md cursor-pointer"
       }`}
-      onClick={expanded ? undefined : () => setExpanded(true)}
+      onClick={expanded ? undefined : onExpand}
     >
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">

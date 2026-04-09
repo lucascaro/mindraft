@@ -16,6 +16,7 @@ export default function IdeasPage() {
   const { user, loading, signOut } = useAuth();
   const router = useRouter();
   const [ideas, setIdeas] = useState<Idea[] | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -78,7 +79,13 @@ export default function IdeasPage() {
         ) : (
           <div className="space-y-3">
             {ideas.map((idea) => (
-              <IdeaCard key={idea.id} idea={idea} />
+              <IdeaCard
+                key={idea.id}
+                idea={idea}
+                expanded={expandedId === idea.id}
+                onExpand={() => setExpandedId(idea.id)}
+                onCollapse={() => setExpandedId(null)}
+              />
             ))}
           </div>
         )}
