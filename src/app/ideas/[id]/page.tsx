@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Plus, Trash2, X } from "lucide-react";
-import { Idea, IdeaStatus } from "@/lib/types";
+import { Idea, IdeaStatus, IDEA_STATUSES } from "@/lib/types";
 
 export default function IdeaDetailPage({
   params,
@@ -112,6 +112,23 @@ export default function IdeaDetailPage({
           <Trash2 className="h-4 w-4 text-destructive" />
         </Button>
       </header>
+
+      <div className="flex gap-2 mb-4">
+        {IDEA_STATUSES.map((s) => (
+          <Button
+            key={s.value}
+            variant={status === s.value ? "default" : "outline"}
+            size="sm"
+            className="flex-1"
+            onClick={() => {
+              setStatus(s.value);
+              save({ status: s.value });
+            }}
+          >
+            {s.label}
+          </Button>
+        ))}
+      </div>
 
       <div className="space-y-4">
         <Input

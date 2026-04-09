@@ -7,7 +7,7 @@ import { Idea } from "@/lib/types";
 
 const statusColors: Record<string, string> = {
   raw: "bg-yellow-100 text-yellow-800 border-yellow-200",
-  refining: "bg-blue-100 text-blue-800 border-blue-200",
+  "in-progress": "bg-blue-100 text-blue-800 border-blue-200",
   developed: "bg-green-100 text-green-800 border-green-200",
 };
 
