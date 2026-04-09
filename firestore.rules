@@ -55,6 +55,10 @@ service cloud.firestore {
       allow delete: if isOwner();
     }
 
+    match /userPrefs/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
     // Deny everything else
     match /{document=**} {
       allow read, write: if false;
