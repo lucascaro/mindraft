@@ -28,6 +28,7 @@ export function TagBadge({
     useTagColors();
   const { resolvedTheme } = useTheme();
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerAlign, setPickerAlign] = useState<"left" | "right">("left");
   const pickerRef = useRef<HTMLDivElement>(null);
 
   const colorClasses = getColorClasses(tag);
@@ -44,6 +45,13 @@ export function TagBadge({
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
+  }, [pickerOpen]);
+
+  // Flip popover to the left if it overflows the right edge of the viewport.
+  useEffect(() => {
+    if (!pickerOpen || !pickerRef.current) return;
+    const rect = pickerRef.current.getBoundingClientRect();
+    setPickerAlign(rect.right > window.innerWidth ? "right" : "left");
   }, [pickerOpen]);
 
   return (
@@ -92,7 +100,10 @@ export function TagBadge({
       {pickerOpen && (
         <div
           ref={pickerRef}
-          className="absolute top-full left-0 mt-1.5 z-50 p-2.5 rounded-lg border shadow-lg bg-card w-max"
+          className={cn(
+            "absolute top-full mt-1.5 z-50 p-2.5 rounded-lg border shadow-lg bg-card w-max",
+            pickerAlign === "right" ? "right-0" : "left-0"
+          )}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="grid grid-cols-5 gap-1.5">
