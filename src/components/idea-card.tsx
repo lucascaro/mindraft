@@ -23,6 +23,7 @@ export function IdeaCard({ idea }: { idea: Idea }) {
   const [tags, setTags] = useState(idea.tags);
   const [status, setStatus] = useState<IdeaStatus>(idea.status);
   const [tagInput, setTagInput] = useState("");
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const editRef = useRef<HTMLDivElement>(null);
   const [editHeight, setEditHeight] = useState(0);
 
@@ -32,6 +33,7 @@ export function IdeaCard({ idea }: { idea: Idea }) {
       setBody(idea.body);
       setTags(idea.tags);
       setStatus(idea.status);
+      setConfirmingDelete(false);
     }
   }, [idea, expanded]);
 
@@ -43,7 +45,7 @@ export function IdeaCard({ idea }: { idea: Idea }) {
 
   useEffect(() => {
     measure();
-  }, [expanded, tags, measure]);
+  }, [expanded, tags, confirmingDelete, measure]);
 
   const save = (updates: Partial<Omit<Idea, "id" | "createdAt" | "userId">>) => {
     updateIdea(idea.id, updates).catch((err) =>
@@ -120,22 +122,11 @@ export function IdeaCard({ idea }: { idea: Idea }) {
               </Badge>
             </div>
 
-            {/* Action buttons — visible when expanded */}
+            {/* Close button — visible when expanded */}
             <div
               className="absolute right-0 flex gap-1 transition-opacity duration-200"
               style={{ opacity: expanded ? 1 : 0, pointerEvents: expanded ? "auto" : "none" }}
             >
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  await deleteIdea(idea.id);
-                }}
-              >
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
               <Button
                 variant="ghost"
                 size="icon"
@@ -265,6 +256,46 @@ export function IdeaCard({ idea }: { idea: Idea }) {
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
+            </div>
+
+            <div className="pt-2 border-t flex justify-end">
+              {confirmingDelete ? (
+                <div className="flex gap-2 items-center">
+                  <span className="text-sm text-muted-foreground">Delete this idea?</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setConfirmingDelete(false);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      await deleteIdea(idea.id);
+                    }}
+                  >
+                    Delete
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setConfirmingDelete(true);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4 mr-1" /> Delete
+                </Button>
+              )}
             </div>
           </CardContent>
         </div>
