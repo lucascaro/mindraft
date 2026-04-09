@@ -5,12 +5,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { subscribeToIdeas } from "@/lib/firestore";
+import { useIdeaFilter } from "@/lib/use-idea-filter";
 import { QuickCapture } from "@/components/quick-capture";
 import { IdeaCard } from "@/components/idea-card";
+import { IdeaFilterBar } from "@/components/idea-filter-bar";
+import { ActiveFilterStrip } from "@/components/active-filter-strip";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Archive, LogOut, Lightbulb, Settings } from "lucide-react";
+import { Archive, LogOut, Lightbulb, Settings, SlidersHorizontal, Search } from "lucide-react";
 import { Idea } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 export default function IdeasPage() {
   const { user, loading, signOut } = useAuth();
@@ -18,6 +22,18 @@ export default function IdeasPage() {
   const [ideas, setIdeas] = useState<Idea[] | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [spinCount, setSpinCount] = useState(0);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+  const {
+    filters,
+    setSearch,
+    setStatus,
+    toggleTag,
+    clearAll,
+    isActive,
+    availableTags,
+    filteredIdeas,
+  } = useIdeaFilter(ideas ?? []);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -110,12 +126,51 @@ export default function IdeasPage() {
               <Settings className="h-4 w-4" />
             </Button>
           </Link>
+          <button
+            onClick={() => setIsFilterOpen((o) => !o)}
+            aria-label={isFilterOpen ? "Close filters" : "Open filters"}
+            aria-expanded={isFilterOpen}
+            className={cn(
+              "relative inline-flex items-center justify-center h-9 w-9 rounded-md transition-colors",
+              "hover:bg-accent hover:text-accent-foreground",
+              isFilterOpen && "bg-accent text-accent-foreground"
+            )}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            {isActive && !isFilterOpen && (
+              <span
+                className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary"
+                aria-hidden="true"
+              />
+            )}
+          </button>
           <ThemeToggle />
           <Button variant="ghost" size="icon" onClick={signOut} aria-label="Sign out">
             <LogOut className="h-4 w-4" />
           </Button>
         </div>
       </header>
+
+      <IdeaFilterBar
+        isOpen={isFilterOpen}
+        filters={filters}
+        availableTags={availableTags}
+        onSearchChange={setSearch}
+        onStatusChange={setStatus}
+        onTagToggle={toggleTag}
+      />
+
+      {isActive && (
+        <ActiveFilterStrip
+          filters={filters}
+          totalCount={(ideas ?? []).length}
+          filteredCount={filteredIdeas.length}
+          onRemoveSearch={() => setSearch("")}
+          onRemoveStatus={() => setStatus("all")}
+          onRemoveTag={(tag) => toggleTag(tag)}
+          onClearAll={clearAll}
+        />
+      )}
 
       <div
         className="transition-opacity duration-200"
@@ -145,9 +200,20 @@ export default function IdeasPage() {
             <Lightbulb className="h-12 w-12 mx-auto mb-3 opacity-30" />
             <p>No ideas yet. Capture your first one above!</p>
           </div>
+        ) : filteredIdeas.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <Search className="h-10 w-10 mx-auto mb-3 opacity-30" />
+            <p className="mb-4">No ideas match your filters.</p>
+            <button
+              onClick={clearAll}
+              className="text-sm text-primary hover:underline"
+            >
+              Clear all filters
+            </button>
+          </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {ideas.map((idea) => (
+            {filteredIdeas.map((idea) => (
               <IdeaCard
                 key={idea.id}
                 idea={idea}
