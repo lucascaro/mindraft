@@ -6,7 +6,6 @@ import {
   deleteDoc,
   query,
   where,
-  orderBy,
   onSnapshot,
   serverTimestamp,
 } from "firebase/firestore";
@@ -21,15 +20,20 @@ export function subscribeToIdeas(
 ) {
   const q = query(
     collection(getDb(), COLLECTION),
-    where("userId", "==", userId),
-    orderBy("updatedAt", "desc")
+    where("userId", "==", userId)
   );
 
   return onSnapshot(q, (snapshot) => {
-    const ideas = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as Idea[];
+    const ideas = snapshot.docs
+      .map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }) as Idea)
+      .sort((a, b) => {
+        const aTime = a.updatedAt?.toMillis?.() ?? 0;
+        const bTime = b.updatedAt?.toMillis?.() ?? 0;
+        return bTime - aTime;
+      });
     callback(ideas);
   });
 }
