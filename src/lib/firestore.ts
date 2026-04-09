@@ -30,8 +30,9 @@ export function subscribeToIdeas(
         ...doc.data(),
       }) as Idea)
       .sort((a, b) => {
-        const aTime = a.updatedAt?.toMillis?.() ?? 0;
-        const bTime = b.updatedAt?.toMillis?.() ?? 0;
+        // Sort by createdAt so editing an idea doesn't reorder the list
+        const aTime = a.createdAt?.toMillis?.() ?? 0;
+        const bTime = b.createdAt?.toMillis?.() ?? 0;
         return bTime - aTime;
       });
     callback(ideas);

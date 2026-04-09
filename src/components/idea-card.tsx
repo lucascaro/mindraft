@@ -52,7 +52,11 @@ export function IdeaCard({ idea }: { idea: Idea }) {
   };
 
   const handleClose = () => {
-    save({ title, body, tags, status });
+    const changes: Partial<Omit<Idea, "id" | "createdAt" | "userId">> = {};
+    if (title !== idea.title) changes.title = title;
+    if (body !== idea.body) changes.body = body;
+    if (status !== idea.status) changes.status = status;
+    if (Object.keys(changes).length > 0) save(changes);
     setExpanded(false);
   };
 
@@ -83,15 +87,19 @@ export function IdeaCard({ idea }: { idea: Idea }) {
     >
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
-          {/* Title: always an input, styled as plain text when collapsed */}
-          <Input
-            value={expanded ? title : idea.title}
-            onChange={(e) => setTitle(e.target.value)}
-            onBlur={() => { if (expanded) save({ title }); }}
-            readOnly={!expanded}
-            className="text-base font-semibold border-none shadow-none px-0 focus-visible:ring-0 h-auto py-0 cursor-inherit bg-transparent"
-            onClick={(e) => e.stopPropagation()}
-          />
+          {/* Title: always an input with stable width */}
+          <div className="flex-1 min-w-0">
+            <Input
+              value={expanded ? title : idea.title}
+              onChange={(e) => setTitle(e.target.value)}
+              onBlur={() => {
+                if (expanded && title !== idea.title) save({ title });
+              }}
+              readOnly={!expanded}
+              className="w-full text-base font-semibold border-none shadow-none px-0 focus-visible:ring-0 h-auto py-0 cursor-inherit bg-transparent"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
 
           {/* Right side: badge cross-fades with action buttons */}
           <div className="relative flex items-center shrink-0">
@@ -197,7 +205,9 @@ export function IdeaCard({ idea }: { idea: Idea }) {
             <Textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              onBlur={() => save({ body })}
+              onBlur={() => {
+                if (body !== idea.body) save({ body });
+              }}
               placeholder="Expand on your idea..."
               className="min-h-[100px] resize-y text-sm"
               onClick={(e) => e.stopPropagation()}

@@ -14,7 +14,7 @@ import { Idea } from "@/lib/types";
 export default function IdeasPage() {
   const { user, loading, signOut } = useAuth();
   const router = useRouter();
-  const [ideas, setIdeas] = useState<Idea[]>([]);
+  const [ideas, setIdeas] = useState<Idea[] | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -55,7 +55,11 @@ export default function IdeasPage() {
         <QuickCapture userId={user.uid} />
       </div>
 
-      {ideas.length === 0 ? (
+      {ideas === null ? (
+        <div className="flex justify-center py-12">
+          <div className="animate-pulse text-muted-foreground text-sm">Loading ideas...</div>
+        </div>
+      ) : ideas.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <Lightbulb className="h-12 w-12 mx-auto mb-3 opacity-30" />
           <p>No ideas yet. Capture your first one above!</p>
