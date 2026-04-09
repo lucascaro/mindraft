@@ -18,17 +18,20 @@ service cloud.firestore {
         return t is list && t.size() <= 30;
       }
 
-      // Validates shape of a NEW document on create.
+      // Validates shape of a NEW document on create. Newly-created ideas
+      // must not carry archive metadata — archiving only happens via a
+      // later update, so the key list here deliberately excludes
+      // 'archived' and 'archivedAt'. Title is required to be non-empty.
       function validCreate() {
         let d = request.resource.data;
         return d.userId == request.auth.uid
-          && d.title is string && d.title.size() <= 500
+          && d.title is string && d.title.size() >= 1 && d.title.size() <= 500
           && d.body is string && d.body.size() <= 50000
           && validTags(d.tags)
           && validStatus(d.status)
           && d.createdAt is timestamp
           && d.updatedAt is timestamp
-          && d.keys().hasOnly(['userId', 'title', 'body', 'tags', 'status', 'createdAt', 'updatedAt', 'archived', 'archivedAt']);
+          && d.keys().hasOnly(['userId', 'title', 'body', 'tags', 'status', 'createdAt', 'updatedAt']);
       }
 
       // Validates an update. `request.resource.data` is the full merged
