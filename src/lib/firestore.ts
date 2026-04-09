@@ -8,15 +8,35 @@ import {
   where,
   onSnapshot,
   serverTimestamp,
+  deleteField,
 } from "firebase/firestore";
 import { getDb } from "./firebase";
 import { Idea } from "./types";
 
 const COLLECTION = "ideas";
 
+type IdeaFilter = "active" | "archived";
+
+function sortByCreatedAt(ideas: Idea[]) {
+  return ideas.sort((a, b) => {
+    const aTime = a.createdAt?.toMillis?.() ?? 0;
+    const bTime = b.createdAt?.toMillis?.() ?? 0;
+    return bTime - aTime;
+  });
+}
+
+function sortByArchivedAt(ideas: Idea[]) {
+  return ideas.sort((a, b) => {
+    const aTime = a.archivedAt?.toMillis?.() ?? 0;
+    const bTime = b.archivedAt?.toMillis?.() ?? 0;
+    return bTime - aTime;
+  });
+}
+
 export function subscribeToIdeas(
   userId: string,
-  callback: (ideas: Idea[]) => void
+  callback: (ideas: Idea[]) => void,
+  filter: IdeaFilter = "active"
 ) {
   const q = query(
     collection(getDb(), COLLECTION),
@@ -24,18 +44,16 @@ export function subscribeToIdeas(
   );
 
   return onSnapshot(q, (snapshot) => {
-    const ideas = snapshot.docs
-      .map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }) as Idea)
-      .sort((a, b) => {
-        // Sort by createdAt so editing an idea doesn't reorder the list
-        const aTime = a.createdAt?.toMillis?.() ?? 0;
-        const bTime = b.createdAt?.toMillis?.() ?? 0;
-        return bTime - aTime;
-      });
-    callback(ideas);
+    const all = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }) as Idea);
+
+    if (filter === "active") {
+      callback(sortByCreatedAt(all.filter((i) => !i.archived)));
+    } else {
+      callback(sortByArchivedAt(all.filter((i) => i.archived === true)));
+    }
   });
 }
 
@@ -62,6 +80,24 @@ export async function updateIdea(
   const ref = doc(getDb(), COLLECTION, id);
   return updateDoc(ref, {
     ...data,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function archiveIdea(id: string) {
+  const ref = doc(getDb(), COLLECTION, id);
+  return updateDoc(ref, {
+    archived: true,
+    archivedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function restoreIdea(id: string) {
+  const ref = doc(getDb(), COLLECTION, id);
+  return updateDoc(ref, {
+    archived: false,
+    archivedAt: deleteField(),
     updatedAt: serverTimestamp(),
   });
 }

@@ -17,4 +17,6 @@ export type Idea = {
   createdAt: Timestamp;
   updatedAt: Timestamp;
   userId: string;
+  archived?: boolean;
+  archivedAt?: Timestamp;
 };

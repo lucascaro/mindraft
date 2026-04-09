@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Plus, Trash2, X } from "lucide-react";
-import { updateIdea, deleteIdea } from "@/lib/firestore";
+import { Archive, ArchiveRestore, Plus, Trash2, X } from "lucide-react";
+import { updateIdea, deleteIdea, archiveIdea, restoreIdea } from "@/lib/firestore";
 import { Idea, IdeaStatus, IDEA_STATUSES } from "@/lib/types";
 
 const statusColors: Record<string, string> = {
@@ -16,7 +16,13 @@ const statusColors: Record<string, string> = {
   developed: "bg-green-100 text-green-800 border-green-200",
 };
 
-export function IdeaCard({ idea }: { idea: Idea }) {
+export function IdeaCard({
+  idea,
+  mode = "active",
+}: {
+  idea: Idea;
+  mode?: "active" | "archived";
+}) {
   const [expanded, setExpanded] = useState(false);
   const [title, setTitle] = useState(idea.title);
   const [body, setBody] = useState(idea.body);
@@ -258,43 +264,70 @@ export function IdeaCard({ idea }: { idea: Idea }) {
               </div>
             </div>
 
-            <div className="pt-2 border-t flex justify-end">
-              {confirmingDelete ? (
-                <div className="flex gap-2 items-center">
-                  <span className="text-sm text-muted-foreground">Delete this idea?</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setConfirmingDelete(false);
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      await deleteIdea(idea.id);
-                    }}
-                  >
-                    Delete
-                  </Button>
-                </div>
-              ) : (
+            <div className="pt-2 border-t flex justify-between items-center gap-2">
+              {mode === "active" ? (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-destructive hover:text-destructive"
-                  onClick={(e) => {
+                  onClick={async (e) => {
                     e.stopPropagation();
-                    setConfirmingDelete(true);
+                    await archiveIdea(idea.id);
                   }}
                 >
-                  <Trash2 className="h-4 w-4 mr-1" /> Delete
+                  <Archive className="h-4 w-4 mr-1" /> Archive
                 </Button>
+              ) : confirmingDelete ? (
+                <div className="flex gap-2 items-center w-full justify-between">
+                  <span className="text-sm text-muted-foreground">
+                    Delete permanently?
+                  </span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setConfirmingDelete(false);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        await deleteIdea(idea.id);
+                      }}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-2 w-full justify-between">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      await restoreIdea(idea.id);
+                    }}
+                  >
+                    <ArchiveRestore className="h-4 w-4 mr-1" /> Restore
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:text-destructive"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setConfirmingDelete(true);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" /> Delete
+                  </Button>
+                </div>
               )}
             </div>
           </CardContent>
