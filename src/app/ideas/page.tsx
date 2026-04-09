@@ -35,23 +35,52 @@ export default function IdeasPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
-      <header className="flex items-center justify-between mb-6 h-10">
+      <header
+        className="flex items-center justify-between mb-6"
+        style={{ height: 40 }}
+      >
         <button
           type="button"
-          className="flex items-center gap-2 cursor-pointer select-none bg-transparent border-0 p-0 m-0 text-left"
+          className="cursor-pointer select-none"
           onClick={() => setSpinCount((c) => c + 1)}
           aria-label="Spin the lightbulb"
-          style={{ perspective: 600 }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            background: "transparent",
+            border: 0,
+            padding: 0,
+            margin: 0,
+            textAlign: "left",
+            perspective: 600,
+          }}
         >
           <Lightbulb
-            className="h-6 w-6 text-primary transition-transform duration-700 ease-in-out"
-            style={{ transform: `rotateY(${spinCount * 360}deg)` }}
+            className="text-primary transition-transform duration-700 ease-in-out"
+            style={{
+              width: 24,
+              height: 24,
+              flexShrink: 0,
+              transform: `rotateY(${spinCount * 360}deg)`,
+            }}
           />
-          <h1 className="text-xl font-bold">Mindraft</h1>
+          <h1
+            className="font-bold"
+            style={{ margin: 0, fontSize: "1.25rem", lineHeight: 1 }}
+          >
+            Mindraft
+          </h1>
         </button>
         <div
-          className="flex items-center gap-1 w-[120px] justify-end transition-opacity duration-200"
+          className="transition-opacity duration-200"
           style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            width: 140,
+            justifyContent: "flex-end",
+            flexShrink: 0,
             opacity: user ? 1 : 0,
             pointerEvents: user ? "auto" : "none",
           }}
@@ -69,8 +98,9 @@ export default function IdeasPage() {
       </header>
 
       <div
-        className="mb-6 h-10 transition-opacity duration-200"
+        className="mb-6 transition-opacity duration-200"
         style={{
+          height: 40,
           opacity: user ? 1 : 0,
           pointerEvents: user ? "auto" : "none",
         }}
