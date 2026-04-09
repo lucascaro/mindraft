@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { TagBadge } from "@/components/tag-badge";
 import { Archive, ArchiveRestore, Plus, Trash2, X } from "lucide-react";
 import { updateIdea, deleteIdea, archiveIdea, restoreIdea } from "@/lib/firestore";
 import { Idea, IdeaStatus, IDEA_STATUSES } from "@/lib/types";
@@ -202,9 +203,7 @@ export function IdeaCard({
           {idea.tags.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {idea.tags.map((tag) => (
-                <Badge key={tag} variant="secondary" className="text-xs">
-                  {tag}
-                </Badge>
+                <TagBadge key={tag} tag={tag} />
               ))}
             </div>
           )}
@@ -253,22 +252,12 @@ export function IdeaCard({
             <div>
               <div className="flex flex-wrap gap-2 mb-2">
                 {tags.map((tag) => (
-                  <Badge
+                  <TagBadge
                     key={tag}
-                    variant="secondary"
-                    className="gap-1 py-1 px-2.5 text-sm"
-                  >
-                    {tag}
-                    <button
-                      className="ml-1 p-0.5"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeTag(tag);
-                      }}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </Badge>
+                    tag={tag}
+                    editable
+                    onRemove={() => removeTag(tag)}
+                  />
                 ))}
               </div>
               <div className="flex gap-2">

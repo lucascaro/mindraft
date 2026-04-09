@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import { AuthProvider } from "@/lib/auth-context";
 import { ThemeProvider } from "@/lib/theme-context";
+import { TagColorProvider } from "@/lib/tag-color-context";
 import { InstallPrompt } from "@/components/install-prompt";
 import { ServiceWorkerRegistrar } from "@/components/sw-registrar";
 import { THEME_INIT_SCRIPT } from "@/lib/theme-init-script";
@@ -59,7 +60,9 @@ export default async function RootLayout({
         }}
       >
         <ThemeProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <TagColorProvider>{children}</TagColorProvider>
+          </AuthProvider>
           <InstallPrompt />
           <ServiceWorkerRegistrar />
         </ThemeProvider>

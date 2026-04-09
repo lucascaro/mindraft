@@ -4,6 +4,7 @@ import { Search, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { FilterState } from "@/lib/use-idea-filter";
+import { useTagColors } from "@/lib/tag-color-context";
 
 type Props = {
   isOpen: boolean;
@@ -28,6 +29,7 @@ export function IdeaFilterBar({
   onStatusChange,
   onTagToggle,
 }: Props) {
+  const { getSwatchColor } = useTagColors();
   return (
     <div
       className={cn(
@@ -86,6 +88,11 @@ export function IdeaFilterBar({
                         : "border-input bg-background text-foreground hover:bg-accent"
                     )}
                   >
+                    <span
+                      className="h-2 w-2 rounded-full shrink-0"
+                      style={{ backgroundColor: getSwatchColor(tag) }}
+                      aria-hidden="true"
+                    />
                     {active && <Check className="h-3 w-3" />}
                     #{tag}
                   </button>

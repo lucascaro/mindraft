@@ -3,6 +3,7 @@
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FilterState } from "@/lib/use-idea-filter";
+import { TagBadge } from "@/components/tag-badge";
 
 type Props = {
   filters: FilterState;
@@ -31,12 +32,14 @@ export function ActiveFilterStrip({
         )}
         {filters.status !== "all" && (
           <FilterChip
-            label={filters.status.charAt(0).toUpperCase() + filters.status.slice(1)}
+            label={
+              filters.status.charAt(0).toUpperCase() + filters.status.slice(1)
+            }
             onRemove={onRemoveStatus}
           />
         )}
         {filters.tags.map((tag) => (
-          <FilterChip key={tag} label={`#${tag}`} onRemove={() => onRemoveTag(tag)} />
+          <TagBadge key={tag} tag={tag} onRemove={() => onRemoveTag(tag)} />
         ))}
         <button
           onClick={onClearAll}
@@ -47,7 +50,8 @@ export function ActiveFilterStrip({
       </div>
       {filteredCount !== totalCount && (
         <p className="text-xs text-muted-foreground mt-1.5">
-          Showing {filteredCount} of {totalCount} idea{totalCount !== 1 ? "s" : ""}
+          Showing {filteredCount} of {totalCount} idea
+          {totalCount !== 1 ? "s" : ""}
         </p>
       )}
     </div>
