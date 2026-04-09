@@ -1,10 +1,7 @@
 // The inline script that runs before React hydrates to prevent a flash
-// of the wrong theme. Exported as a constant so `next.config.ts` can
-// compute its SHA-256 hash at build time for a strict CSP `script-src`.
-//
-// IMPORTANT: the hash in the CSP header is computed from this exact
-// string. Any change (including whitespace) requires regenerating the
-// hash — next.config.ts does this automatically on build.
+// of the wrong theme. Extracted into its own module so `layout.tsx` can
+// apply the per-request CSP nonce (set by `src/proxy.ts`) to the <script>
+// tag without having the raw string inlined into JSX.
 export const THEME_INIT_SCRIPT = `(function() {
   try {
     var stored = localStorage.getItem('mindraft-theme');
