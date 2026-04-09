@@ -77,6 +77,19 @@ export function IdeaCard({
     }
   }, [idea, expanded]);
 
+  // Cmd+Enter (or Ctrl+Enter) saves and closes the card.
+  useEffect(() => {
+    if (!expanded) return;
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        e.preventDefault();
+        onCollapse();
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [expanded, onCollapse]);
+
   const measure = useCallback(() => {
     if (editRef.current) {
       setEditHeight(editRef.current.scrollHeight);
