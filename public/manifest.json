@@ -1,0 +1,22 @@
+{
+  "name": "Mindraft",
+  "short_name": "Mindraft",
+  "description": "Capture ideas on the go. Refine them later.",
+  "start_url": "/ideas",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0a0a0a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
+import { subscribeToIdeas } from "@/lib/firestore";
+import { QuickCapture } from "@/components/quick-capture";
+import { IdeaCard } from "@/components/idea-card";
+import { Button } from "@/components/ui/button";
+import { LogOut, Lightbulb } from "lucide-react";
+import { Idea } from "@/lib/types";
+
+export default function IdeasPage() {
+  const { user, loading, signOut } = useAuth();
+  const router = useRouter();
+  const [ideas, setIdeas] = useState<Idea[]>([]);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/login");
+    }
+  }, [user, loading, router]);
+
+  useEffect(() => {
+    if (!user) return;
+    const unsubscribe = subscribeToIdeas(user.uid, setIdeas);
+    return unsubscribe;
+  }, [user]);
+
+  if (loading || !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-2xl px-4 py-6">
+      <header className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2">
+          <Lightbulb className="h-6 w-6 text-primary" />
+          <h1 className="text-xl font-bold">Mindraft</h1>
+        </div>
+        <Button variant="ghost" size="icon" onClick={signOut}>
+          <LogOut className="h-4 w-4" />
+        </Button>
+      </header>
+
+      <div className="mb-6">
+        <QuickCapture userId={user.uid} />
+      </div>
+
+      {ideas.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <Lightbulb className="h-12 w-12 mx-auto mb-3 opacity-30" />
+          <p>No ideas yet. Capture your first one above!</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {ideas.map((idea) => (
+            <IdeaCard key={idea.id} idea={idea} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
