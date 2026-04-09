@@ -17,6 +17,7 @@ export default function IdeasPage() {
   const router = useRouter();
   const [ideas, setIdeas] = useState<Idea[] | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [spinCount, setSpinCount] = useState(0);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -35,10 +36,18 @@ export default function IdeasPage() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
       <header className="flex items-center justify-between mb-6 h-10">
-        <div className="flex items-center gap-2">
-          <Lightbulb className="h-6 w-6 text-primary" />
+        <button
+          className="flex items-center gap-2 cursor-pointer select-none"
+          onClick={() => setSpinCount((c) => c + 1)}
+          aria-label="Spin the lightbulb"
+          style={{ perspective: 600 }}
+        >
+          <Lightbulb
+            className="h-6 w-6 text-primary transition-transform duration-700 ease-in-out"
+            style={{ transform: `rotateY(${spinCount * 360}deg)` }}
+          />
           <h1 className="text-xl font-bold">Mindraft</h1>
-        </div>
+        </button>
         <div className="flex items-center gap-1 w-[120px] justify-end">
           {user && (
             <>
