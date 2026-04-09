@@ -7,6 +7,7 @@ import { subscribeToIdeas } from "@/lib/firestore";
 import { QuickCapture } from "@/components/quick-capture";
 import { IdeaCard } from "@/components/idea-card";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { LogOut, Lightbulb } from "lucide-react";
 import { Idea } from "@/lib/types";
 
@@ -42,9 +43,12 @@ export default function IdeasPage() {
           <Lightbulb className="h-6 w-6 text-primary" />
           <h1 className="text-xl font-bold">Mindraft</h1>
         </div>
-        <Button variant="ghost" size="icon" onClick={signOut}>
-          <LogOut className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          <Button variant="ghost" size="icon" onClick={signOut}>
+            <LogOut className="h-4 w-4" />
+          </Button>
+        </div>
       </header>
 
       <div className="mb-6">

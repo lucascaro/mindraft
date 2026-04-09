@@ -23,8 +23,8 @@ export function IdeaCard({ idea }: { idea: Idea }) {
   const [tags, setTags] = useState(idea.tags);
   const [status, setStatus] = useState<IdeaStatus>(idea.status);
   const [tagInput, setTagInput] = useState("");
-  const expandRef = useRef<HTMLDivElement>(null);
-  const [expandHeight, setExpandHeight] = useState(0);
+  const editRef = useRef<HTMLDivElement>(null);
+  const [editHeight, setEditHeight] = useState(0);
 
   useEffect(() => {
     if (!expanded) {
@@ -36,8 +36,8 @@ export function IdeaCard({ idea }: { idea: Idea }) {
   }, [idea, expanded]);
 
   const measure = useCallback(() => {
-    if (expandRef.current) {
-      setExpandHeight(expandRef.current.scrollHeight);
+    if (editRef.current) {
+      setEditHeight(editRef.current.scrollHeight);
     }
   }, []);
 
@@ -83,60 +83,71 @@ export function IdeaCard({ idea }: { idea: Idea }) {
     >
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
-          {expanded ? (
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              onBlur={() => save({ title })}
-              className="text-base font-semibold border-none shadow-none px-0 focus-visible:ring-0 h-auto py-0"
-              autoFocus
-              onClick={(e) => e.stopPropagation()}
-            />
-          ) : (
-            <span className="text-base font-semibold leading-snug">
-              {idea.title}
-            </span>
-          )}
-          <div className="flex items-center gap-1 shrink-0">
-            {expanded ? (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    await deleteIdea(idea.id);
-                  }}
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleClose();
-                  }}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </>
-            ) : (
+          {/* Title: always an input, styled as plain text when collapsed */}
+          <Input
+            value={expanded ? title : idea.title}
+            onChange={(e) => setTitle(e.target.value)}
+            onBlur={() => { if (expanded) save({ title }); }}
+            readOnly={!expanded}
+            className="text-base font-semibold border-none shadow-none px-0 focus-visible:ring-0 h-auto py-0 cursor-inherit bg-transparent"
+            onClick={(e) => e.stopPropagation()}
+          />
+
+          {/* Right side: badge cross-fades with action buttons */}
+          <div className="relative flex items-center shrink-0">
+            {/* Status badge — visible when collapsed */}
+            <div
+              className="transition-opacity duration-200"
+              style={{ opacity: expanded ? 0 : 1, pointerEvents: expanded ? "none" : "auto" }}
+            >
               <Badge
                 variant="outline"
                 className={statusColors[idea.status] ?? ""}
               >
                 {idea.status}
               </Badge>
-            )}
+            </div>
+
+            {/* Action buttons — visible when expanded */}
+            <div
+              className="absolute right-0 flex gap-1 transition-opacity duration-200"
+              style={{ opacity: expanded ? 1 : 0, pointerEvents: expanded ? "auto" : "none" }}
+            >
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  await deleteIdea(idea.id);
+                }}
+              >
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleClose();
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </CardHeader>
 
-      {/* Always-visible preview (fades out when expanded) */}
-      {!expanded && (
+      {/* Preview: body + tags — collapses when editing */}
+      <div
+        className="overflow-hidden transition-all duration-300 ease-in-out"
+        style={{
+          maxHeight: expanded ? 0 : 200,
+          opacity: expanded ? 0 : 1,
+        }}
+      >
         <CardContent>
           {idea.body && (
             <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
@@ -153,17 +164,17 @@ export function IdeaCard({ idea }: { idea: Idea }) {
             </div>
           )}
         </CardContent>
-      )}
+      </div>
 
-      {/* Expandable edit area */}
+      {/* Edit area — expands when editing */}
       <div
-        className="overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out"
+        className="overflow-hidden transition-all duration-300 ease-in-out"
         style={{
-          maxHeight: expanded ? expandHeight : 0,
+          maxHeight: expanded ? editHeight : 0,
           opacity: expanded ? 1 : 0,
         }}
       >
-        <div ref={expandRef}>
+        <div ref={editRef}>
           <CardContent className="space-y-3 pt-0">
             <div className="flex gap-1.5">
               {IDEA_STATUSES.map((s) => (
@@ -198,7 +209,7 @@ export function IdeaCard({ idea }: { idea: Idea }) {
                   <Badge
                     key={tag}
                     variant="secondary"
-                    className="gap-1 py-1 px-2.5 text-sm transition-all duration-200"
+                    className="gap-1 py-1 px-2.5 text-sm"
                   >
                     {tag}
                     <button
