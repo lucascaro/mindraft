@@ -37,7 +37,8 @@ export default function IdeasPage() {
     <div className="mx-auto max-w-2xl px-4 py-6">
       <header className="flex items-center justify-between mb-6 h-10">
         <button
-          className="flex items-center gap-2 cursor-pointer select-none"
+          type="button"
+          className="flex items-center gap-2 cursor-pointer select-none bg-transparent border-0 p-0 m-0 text-left"
           onClick={() => setSpinCount((c) => c + 1)}
           aria-label="Spin the lightbulb"
           style={{ perspective: 600 }}
@@ -48,25 +49,33 @@ export default function IdeasPage() {
           />
           <h1 className="text-xl font-bold">Mindraft</h1>
         </button>
-        <div className="flex items-center gap-1 w-[120px] justify-end">
-          {user && (
-            <>
-              <Link href="/ideas/archive">
-                <Button variant="ghost" size="icon" aria-label="Archive">
-                  <Archive className="h-4 w-4" />
-                </Button>
-              </Link>
-              <ThemeToggle />
-              <Button variant="ghost" size="icon" onClick={signOut}>
-                <LogOut className="h-4 w-4" />
-              </Button>
-            </>
-          )}
+        <div
+          className="flex items-center gap-1 w-[120px] justify-end transition-opacity duration-200"
+          style={{
+            opacity: user ? 1 : 0,
+            pointerEvents: user ? "auto" : "none",
+          }}
+        >
+          <Link href="/ideas/archive">
+            <Button variant="ghost" size="icon" aria-label="Archive">
+              <Archive className="h-4 w-4" />
+            </Button>
+          </Link>
+          <ThemeToggle />
+          <Button variant="ghost" size="icon" onClick={signOut}>
+            <LogOut className="h-4 w-4" />
+          </Button>
         </div>
       </header>
 
-      <div className="mb-6 h-10">
-        {user && <QuickCapture userId={user.uid} />}
+      <div
+        className="mb-6 h-10 transition-opacity duration-200"
+        style={{
+          opacity: user ? 1 : 0,
+          pointerEvents: user ? "auto" : "none",
+        }}
+      >
+        <QuickCapture userId={user?.uid ?? ""} />
       </div>
 
       <div className="min-h-[200px]">
