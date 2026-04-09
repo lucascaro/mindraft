@@ -92,7 +92,7 @@ export function TagBadge({
       {pickerOpen && (
         <div
           ref={pickerRef}
-          className="absolute top-full left-0 mt-1.5 z-50 p-2.5 rounded-lg border shadow-lg bg-card"
+          className="absolute top-full left-0 mt-1.5 z-50 p-2.5 rounded-lg border shadow-lg bg-card w-max"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="grid grid-cols-5 gap-1.5">
