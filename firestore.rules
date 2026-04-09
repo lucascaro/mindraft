@@ -2,10 +2,57 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /ideas/{ideaId} {
-      allow read, update, delete: if request.auth != null
-                                  && resource.data.userId == request.auth.uid;
-      allow create: if request.auth != null
-                    && request.resource.data.userId == request.auth.uid;
+      // --- helpers ---
+      function isSignedIn() {
+        return request.auth != null;
+      }
+      function isOwner() {
+        return isSignedIn() && resource.data.userId == request.auth.uid;
+      }
+
+      function validStatus(s) {
+        return s is string && s in ['raw', 'in-progress', 'developed'];
+      }
+
+      function validTags(t) {
+        return t is list && t.size() <= 30;
+      }
+
+      // Validates shape of a NEW document on create.
+      function validCreate() {
+        let d = request.resource.data;
+        return d.userId == request.auth.uid
+          && d.title is string && d.title.size() <= 500
+          && d.body is string && d.body.size() <= 50000
+          && validTags(d.tags)
+          && validStatus(d.status)
+          && d.createdAt is timestamp
+          && d.updatedAt is timestamp
+          && d.keys().hasOnly(['userId', 'title', 'body', 'tags', 'status', 'createdAt', 'updatedAt', 'archived', 'archivedAt']);
+      }
+
+      // Validates an update. `request.resource.data` is the full merged
+      // document after the update, so every required field is always
+      // present and can be validated unconditionally.
+      function validUpdate() {
+        let d = request.resource.data;
+        let prev = resource.data;
+        return d.userId == prev.userId
+          && d.createdAt == prev.createdAt
+          && d.updatedAt is timestamp
+          && d.title is string && d.title.size() <= 500
+          && d.body is string && d.body.size() <= 50000
+          && validTags(d.tags)
+          && validStatus(d.status)
+          && d.keys().hasOnly(['userId', 'title', 'body', 'tags', 'status', 'createdAt', 'updatedAt', 'archived', 'archivedAt'])
+          && (!('archived' in d.keys()) || d.archived is bool)
+          && (!('archivedAt' in d.keys()) || d.archivedAt is timestamp);
+      }
+
+      allow read: if isOwner();
+      allow create: if isSignedIn() && validCreate();
+      allow update: if isOwner() && validUpdate();
+      allow delete: if isOwner();
     }
 
     // Deny everything else

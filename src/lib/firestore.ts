@@ -9,6 +9,8 @@ import {
   onSnapshot,
   serverTimestamp,
   deleteField,
+  getDocs,
+  writeBatch,
 } from "firebase/firestore";
 import { getDb } from "./firebase";
 import { Idea } from "./types";
@@ -104,4 +106,47 @@ export async function restoreIdea(id: string) {
 
 export async function deleteIdea(id: string) {
   return deleteDoc(doc(getDb(), COLLECTION, id));
+}
+
+/**
+ * One-shot fetch of every idea (active and archived) owned by the user.
+ * Used by the data export feature in Settings. Sorted newest-first.
+ */
+export async function exportAllIdeas(userId: string): Promise<Idea[]> {
+  const q = query(
+    collection(getDb(), COLLECTION),
+    where("userId", "==", userId)
+  );
+  const snap = await getDocs(q);
+  const all = snap.docs.map(
+    (d) =>
+      ({
+        id: d.id,
+        ...d.data(),
+      }) as Idea
+  );
+  return sortByCreatedAt(all);
+}
+
+/**
+ * Permanently deletes every idea owned by the user. Used by the account
+ * deletion flow before deleting the Auth user itself. Firestore batched
+ * writes are capped at 500 ops; this chunks if needed.
+ */
+export async function deleteAllUserIdeas(userId: string): Promise<void> {
+  const q = query(
+    collection(getDb(), COLLECTION),
+    where("userId", "==", userId)
+  );
+  const snap = await getDocs(q);
+  if (snap.empty) return;
+
+  const CHUNK = 450;
+  for (let i = 0; i < snap.docs.length; i += CHUNK) {
+    const batch = writeBatch(getDb());
+    for (const d of snap.docs.slice(i, i + CHUNK)) {
+      batch.delete(d.ref);
+    }
+    await batch.commit();
+  }
 }

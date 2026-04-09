@@ -9,7 +9,7 @@ import { QuickCapture } from "@/components/quick-capture";
 import { IdeaCard } from "@/components/idea-card";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Archive, LogOut, Lightbulb } from "lucide-react";
+import { Archive, LogOut, Lightbulb, Settings } from "lucide-react";
 import { Idea } from "@/lib/types";
 
 export default function IdeasPage() {
@@ -93,7 +93,7 @@ export default function IdeasPage() {
             display: "flex",
             alignItems: "center",
             gap: 4,
-            width: 140,
+            width: 176,
             justifyContent: "flex-end",
             flexShrink: 0,
             opacity: user ? 1 : 0,
@@ -105,8 +105,13 @@ export default function IdeasPage() {
               <Archive className="h-4 w-4" />
             </Button>
           </Link>
+          <Link href="/settings">
+            <Button variant="ghost" size="icon" aria-label="Settings">
+              <Settings className="h-4 w-4" />
+            </Button>
+          </Link>
           <ThemeToggle />
-          <Button variant="ghost" size="icon" onClick={signOut}>
+          <Button variant="ghost" size="icon" onClick={signOut} aria-label="Sign out">
             <LogOut className="h-4 w-4" />
           </Button>
         </div>

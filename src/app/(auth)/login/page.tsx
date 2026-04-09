@@ -3,6 +3,7 @@
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Lightbulb, Zap, PencilLine, Smartphone } from "lucide-react";
@@ -67,7 +68,13 @@ export default function LoginPage() {
             ))}
           </ul>
           <p className="text-xs text-muted-foreground text-center">
-            Free. No ads. Yours alone.
+            Free. No ads. Yours alone.{" "}
+            <Link
+              href="/privacy"
+              className="underline underline-offset-4 hover:text-foreground"
+            >
+              Privacy Policy
+            </Link>
           </p>
         </CardContent>
       </Card>
