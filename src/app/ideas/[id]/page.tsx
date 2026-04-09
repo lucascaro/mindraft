@@ -28,7 +28,6 @@ export default function IdeaDetailPage({
   const [tagInput, setTagInput] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [status, setStatus] = useState<IdeaStatus>("raw");
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -51,15 +50,12 @@ export default function IdeaDetailPage({
     return unsubscribe;
   }, [id]);
 
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      await updateIdea(id, { title, body, tags, status });
-    } catch (err) {
-      console.error("Failed to save:", err);
-    } finally {
-      setSaving(false);
-    }
+  const save = (updates: Partial<Omit<Idea, "id" | "createdAt" | "userId">>) => {
+    updateIdea(id, updates).catch((err) => console.error("Failed to save:", err));
+  };
+
+  const handleBlurSave = () => {
+    save({ title, body, tags, status });
   };
 
   const handleDelete = async () => {
@@ -70,7 +66,9 @@ export default function IdeaDetailPage({
   const addTag = () => {
     const newTag = tagInput.trim().toLowerCase();
     if (newTag && !tags.includes(newTag)) {
-      setTags([...tags, newTag]);
+      const updated = [...tags, newTag];
+      setTags(updated);
+      save({ tags: updated });
     }
     setTagInput("");
   };
@@ -83,7 +81,9 @@ export default function IdeaDetailPage({
   };
 
   const removeTag = (tag: string) => {
-    setTags(tags.filter((t) => t !== tag));
+    const updated = tags.filter((t) => t !== tag);
+    setTags(updated);
+    save({ tags: updated });
   };
 
   if (loading || authLoading) {
@@ -117,6 +117,7 @@ export default function IdeaDetailPage({
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
+          onBlur={handleBlurSave}
           placeholder="Idea title"
           className="text-lg font-semibold border-none shadow-none px-0 focus-visible:ring-0"
         />
@@ -124,6 +125,7 @@ export default function IdeaDetailPage({
         <Textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
+          onBlur={handleBlurSave}
           placeholder="Expand on your idea... (supports markdown)"
           className="min-h-[200px] resize-y"
         />
@@ -158,10 +160,6 @@ export default function IdeaDetailPage({
             </Button>
           </div>
         </div>
-
-        <Button onClick={handleSave} disabled={saving} className="w-full">
-          {saving ? "Saving..." : "Save Changes"}
-        </Button>
       </div>
     </div>
   );
