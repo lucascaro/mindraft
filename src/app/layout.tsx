@@ -42,11 +42,26 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
+    <html
+      lang="en"
+      className="h-full antialiased"
+      style={{ height: "100%" }}
+      suppressHydrationWarning
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body className="min-h-full flex flex-col">
+      <body
+        className="min-h-full flex flex-col"
+        style={{
+          margin: 0,
+          minHeight: "100%",
+          display: "flex",
+          flexDirection: "column",
+          overflowX: "hidden",
+          maxWidth: "100vw",
+        }}
+      >
         <ThemeProvider>
           <AuthProvider>{children}</AuthProvider>
           <InstallPrompt />

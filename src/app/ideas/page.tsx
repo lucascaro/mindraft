@@ -34,10 +34,25 @@ export default function IdeasPage() {
   const showSkeleton = loading || !user || ideas === null;
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6">
+    <div
+      className="mx-auto max-w-2xl"
+      style={{
+        width: "100%",
+        maxWidth: 672,
+        marginInline: "auto",
+        paddingInline: 16,
+        paddingBlock: 24,
+        boxSizing: "border-box",
+      }}
+    >
       <header
-        className="flex items-center justify-between mb-6"
-        style={{ height: 40 }}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 24,
+          height: 40,
+        }}
       >
         <button
           type="button"
@@ -98,8 +113,9 @@ export default function IdeasPage() {
       </header>
 
       <div
-        className="mb-6 transition-opacity duration-200"
+        className="transition-opacity duration-200"
         style={{
+          marginBottom: 24,
           height: 40,
           opacity: user ? 1 : 0,
           pointerEvents: user ? "auto" : "none",
@@ -108,14 +124,14 @@ export default function IdeasPage() {
         <QuickCapture userId={user?.uid ?? ""} />
       </div>
 
-      <div className="min-h-[200px]">
+      <div style={{ minHeight: 200 }}>
         {showSkeleton ? (
-          <div className="space-y-3">
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {[0, 1, 2].map((i) => (
               <div
                 key={i}
-                className="rounded-lg border bg-card h-24 animate-pulse"
-                style={{ opacity: 0.4 - i * 0.1 }}
+                className="rounded-lg border bg-card animate-pulse"
+                style={{ height: 96, opacity: 0.4 - i * 0.1 }}
               />
             ))}
           </div>
@@ -125,7 +141,7 @@ export default function IdeasPage() {
             <p>No ideas yet. Capture your first one above!</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {ideas.map((idea) => (
               <IdeaCard
                 key={idea.id}

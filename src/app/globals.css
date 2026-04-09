@@ -66,12 +66,15 @@
 html {
   scrollbar-gutter: stable;
   overflow-y: scroll;
+  overflow-x: hidden;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 @layer base {
