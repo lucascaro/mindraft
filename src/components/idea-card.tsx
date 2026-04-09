@@ -37,25 +37,45 @@ export function IdeaCard({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const editRef = useRef<HTMLDivElement>(null);
   const [editHeight, setEditHeight] = useState(0);
+  const wasExpanded = useRef(expanded);
 
-  // When this card collapses (either by user or by another card opening),
-  // flush pending edits to Firestore and reset to the server state.
+  // Keep refs to the latest edit values so the save-on-collapse
+  // effect sees fresh values without depending on them.
+  const latestRef = useRef({ title, body, status });
+  latestRef.current = { title, body, status };
+
+  const save = (updates: Partial<Omit<Idea, "id" | "createdAt" | "userId">>) => {
+    updateIdea(idea.id, updates).catch((err) =>
+      console.error("Failed to save:", err)
+    );
+  };
+
+  // Fire save ONLY on the transition from expanded → collapsed.
+  useEffect(() => {
+    if (wasExpanded.current && !expanded) {
+      const { title: t, body: b, status: s } = latestRef.current;
+      const changes: Partial<Omit<Idea, "id" | "createdAt" | "userId">> = {};
+      if (t !== idea.title) changes.title = t;
+      if (b !== idea.body) changes.body = b;
+      if (s !== idea.status) changes.status = s;
+      if (Object.keys(changes).length > 0) save(changes);
+      setConfirmingDelete(false);
+    }
+    wasExpanded.current = expanded;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded]);
+
+  // When NOT in edit mode, keep local state in sync with the
+  // Firestore document. This runs whenever idea changes (from
+  // subscription) or when the card first renders.
   useEffect(() => {
     if (!expanded) {
-      const changes: Partial<Omit<Idea, "id" | "createdAt" | "userId">> = {};
-      if (title !== idea.title) changes.title = title;
-      if (body !== idea.body) changes.body = body;
-      if (status !== idea.status) changes.status = status;
-      if (Object.keys(changes).length > 0) save(changes);
-
       setTitle(idea.title);
       setBody(idea.body);
       setTags(idea.tags);
       setStatus(idea.status);
-      setConfirmingDelete(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expanded, idea]);
+  }, [idea, expanded]);
 
   const measure = useCallback(() => {
     if (editRef.current) {
@@ -66,12 +86,6 @@ export function IdeaCard({
   useEffect(() => {
     measure();
   }, [expanded, tags, confirmingDelete, measure]);
-
-  const save = (updates: Partial<Omit<Idea, "id" | "createdAt" | "userId">>) => {
-    updateIdea(idea.id, updates).catch((err) =>
-      console.error("Failed to save:", err)
-    );
-  };
 
   const handleClose = () => {
     onCollapse();
