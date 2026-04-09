@@ -1,11 +1,11 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Plus, Trash2, X } from "lucide-react";
 import { updateIdea, deleteIdea } from "@/lib/firestore";
 import { Idea, IdeaStatus, IDEA_STATUSES } from "@/lib/types";
@@ -23,10 +23,9 @@ export function IdeaCard({ idea }: { idea: Idea }) {
   const [tags, setTags] = useState(idea.tags);
   const [status, setStatus] = useState<IdeaStatus>(idea.status);
   const [tagInput, setTagInput] = useState("");
-  const contentRef = useRef<HTMLDivElement>(null);
-  const [contentHeight, setContentHeight] = useState<number | undefined>();
+  const expandRef = useRef<HTMLDivElement>(null);
+  const [expandHeight, setExpandHeight] = useState(0);
 
-  // Sync from Firestore updates
   useEffect(() => {
     if (!expanded) {
       setTitle(idea.title);
@@ -36,12 +35,15 @@ export function IdeaCard({ idea }: { idea: Idea }) {
     }
   }, [idea, expanded]);
 
-  // Measure and animate height
-  useEffect(() => {
-    if (contentRef.current) {
-      setContentHeight(contentRef.current.scrollHeight);
+  const measure = useCallback(() => {
+    if (expandRef.current) {
+      setExpandHeight(expandRef.current.scrollHeight);
     }
-  }, [expanded, tags]);
+  }, []);
+
+  useEffect(() => {
+    measure();
+  }, [expanded, tags, measure]);
 
   const save = (updates: Partial<Omit<Idea, "id" | "createdAt" | "userId">>) => {
     updateIdea(idea.id, updates).catch((err) =>
@@ -70,29 +72,71 @@ export function IdeaCard({ idea }: { idea: Idea }) {
     save({ tags: updated });
   };
 
-  const handleDelete = async () => {
-    await deleteIdea(idea.id);
-  };
-
-  if (!expanded) {
-    return (
-      <Card
-        className="transition-shadow hover:shadow-md cursor-pointer"
-        onClick={() => setExpanded(true)}
-      >
-        <CardHeader className="pb-2">
-          <div className="flex items-start justify-between gap-2">
-            <CardTitle className="text-base leading-snug">
+  return (
+    <Card
+      className={`transition-all duration-300 ease-in-out ${
+        expanded
+          ? "shadow-md border-primary/30"
+          : "hover:shadow-md cursor-pointer"
+      }`}
+      onClick={expanded ? undefined : () => setExpanded(true)}
+    >
+      <CardHeader className="pb-2">
+        <div className="flex items-start justify-between gap-2">
+          {expanded ? (
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onBlur={() => save({ title })}
+              className="text-base font-semibold border-none shadow-none px-0 focus-visible:ring-0 h-auto py-0"
+              autoFocus
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <span className="text-base font-semibold leading-snug">
               {idea.title}
-            </CardTitle>
-            <Badge
-              variant="outline"
-              className={statusColors[idea.status] ?? ""}
-            >
-              {idea.status}
-            </Badge>
+            </span>
+          )}
+          <div className="flex items-center gap-1 shrink-0">
+            {expanded ? (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    await deleteIdea(idea.id);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleClose();
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </>
+            ) : (
+              <Badge
+                variant="outline"
+                className={statusColors[idea.status] ?? ""}
+              >
+                {idea.status}
+              </Badge>
+            )}
           </div>
-        </CardHeader>
+        </div>
+      </CardHeader>
+
+      {/* Always-visible preview (fades out when expanded) */}
+      {!expanded && (
         <CardContent>
           {idea.body && (
             <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
@@ -109,102 +153,96 @@ export function IdeaCard({ idea }: { idea: Idea }) {
             </div>
           )}
         </CardContent>
-      </Card>
-    );
-  }
+      )}
 
-  return (
-    <Card className="shadow-md border-primary/30">
+      {/* Expandable edit area */}
       <div
-        ref={contentRef}
-        style={{ height: contentHeight }}
-        className="transition-[height] duration-300 ease-in-out overflow-hidden"
+        className="overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out"
+        style={{
+          maxHeight: expanded ? expandHeight : 0,
+          opacity: expanded ? 1 : 0,
+        }}
       >
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between gap-2">
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              onBlur={() => save({ title })}
-              className="text-base font-semibold border-none shadow-none px-0 focus-visible:ring-0 h-auto py-0"
-              autoFocus
-            />
-            <div className="flex gap-1 shrink-0">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleDelete}>
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleClose}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex gap-1.5">
-            {IDEA_STATUSES.map((s) => (
-              <Button
-                key={s.value}
-                variant={status === s.value ? "default" : "outline"}
-                size="sm"
-                className="flex-1 h-8 text-xs"
-                onClick={() => {
-                  setStatus(s.value);
-                  save({ status: s.value });
-                }}
-              >
-                {s.label}
-              </Button>
-            ))}
-          </div>
-
-          <Textarea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            onBlur={() => save({ body })}
-            placeholder="Expand on your idea..."
-            className="min-h-[100px] resize-y text-sm"
-          />
-
-          <div>
-            <div className="flex flex-wrap gap-2 mb-2">
-              {tags.map((tag) => (
-                <Badge
-                  key={tag}
-                  variant="secondary"
-                  className="gap-1 py-1 px-2.5 text-sm"
+        <div ref={expandRef}>
+          <CardContent className="space-y-3 pt-0">
+            <div className="flex gap-1.5">
+              {IDEA_STATUSES.map((s) => (
+                <Button
+                  key={s.value}
+                  variant={status === s.value ? "default" : "outline"}
+                  size="sm"
+                  className="flex-1 h-8 text-xs transition-colors duration-200"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setStatus(s.value);
+                    save({ status: s.value });
+                  }}
                 >
-                  {tag}
-                  <button className="ml-1 p-0.5" onClick={() => removeTag(tag)}>
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </Badge>
+                  {s.label}
+                </Button>
               ))}
             </div>
-            <div className="flex gap-2">
-              <Input
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && tagInput.trim()) {
-                    e.preventDefault();
+
+            <Textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              onBlur={() => save({ body })}
+              placeholder="Expand on your idea..."
+              className="min-h-[100px] resize-y text-sm"
+              onClick={(e) => e.stopPropagation()}
+            />
+
+            <div>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {tags.map((tag) => (
+                  <Badge
+                    key={tag}
+                    variant="secondary"
+                    className="gap-1 py-1 px-2.5 text-sm transition-all duration-200"
+                  >
+                    {tag}
+                    <button
+                      className="ml-1 p-0.5"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeTag(tag);
+                      }}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && tagInput.trim()) {
+                      e.preventDefault();
+                      addTag();
+                    }
+                  }}
+                  placeholder="Add a tag"
+                  className="text-sm flex-1"
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  onClick={(e) => {
+                    e.stopPropagation();
                     addTag();
-                  }
-                }}
-                placeholder="Add a tag"
-                className="text-sm flex-1"
-              />
-              <Button
-                type="button"
-                size="icon"
-                variant="outline"
-                onClick={addTag}
-                disabled={!tagInput.trim()}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
+                  }}
+                  disabled={!tagInput.trim()}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-          </div>
-        </CardContent>
+          </CardContent>
+        </div>
       </div>
     </Card>
   );
