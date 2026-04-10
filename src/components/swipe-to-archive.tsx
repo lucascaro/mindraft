@@ -114,7 +114,8 @@ export function SwipeToArchive({
         card.style.willChange = "transform";
       }
 
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      e.preventDefault();
+      containerRef.current!.setPointerCapture(e.pointerId);
     },
     [enabled]
   );
@@ -199,6 +200,7 @@ export function SwipeToArchive({
     <div
       ref={containerRef}
       className="relative overflow-hidden rounded-xl"
+      style={{ touchAction: "pan-y" }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
