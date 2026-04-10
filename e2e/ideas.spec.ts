@@ -102,6 +102,25 @@ test.describe("Ideas page", () => {
     await expect(ideaCard(page, "First idea")).toBeVisible();
     await expect(ideaCard(page, "Second idea")).toBeVisible();
   });
+
+  test("marking an idea as refine-next moves it to the top", async ({ page }) => {
+    await createIdea(page, "Alpha");
+    await createIdea(page, "Beta");
+    await createIdea(page, "Gamma");
+
+    // Default order: Alpha, Beta, Gamma (insertion order, all sortOrder=0)
+    const cards = page.locator("ul > li [role='button'][aria-expanded]");
+    await expect(cards).toHaveCount(3);
+    await expect(cards.first()).toHaveAttribute("aria-label", "Alpha");
+    await expect(cards.last()).toHaveAttribute("aria-label", "Gamma");
+
+    // Click "Mark for refinement" on Gamma (the last card)
+    const refineBtn = page.getByLabel("Mark for refinement").last();
+    await refineBtn.click();
+
+    // Gamma should now be first — its sortOrder changed to -1
+    await expect(cards.first()).toHaveAttribute("aria-label", "Gamma");
+  });
 });
 
 test.describe("Swipe to archive", () => {

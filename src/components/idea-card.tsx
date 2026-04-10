@@ -192,7 +192,10 @@ export function IdeaCard({
                   }`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    updateIdea(idea.id, { refineNext: !idea.refineNext });
+                    updateIdea(idea.id, {
+                      refineNext: !idea.refineNext,
+                      ...(!idea.refineNext && { sortOrder: -1 }),
+                    });
                   }}
                 >
                   <Crosshair className="h-4 w-4" />
@@ -390,7 +393,10 @@ export function IdeaCard({
                     }`}
                     onClick={(e) => {
                       e.stopPropagation();
-                      save({ refineNext: !idea.refineNext });
+                      save({
+                        refineNext: !idea.refineNext,
+                        ...(!idea.refineNext && { sortOrder: -1 }),
+                      });
                     }}
                   >
                     <Crosshair className="h-3.5 w-3.5 mr-1" />
