@@ -12,7 +12,7 @@ export async function GET() {
 
   const metadata = {
     issuer: base,
-    authorization_endpoint: `${base}/connect`,
+    authorization_endpoint: `${base}/api/oauth/authorize`,
     token_endpoint: `${base}/api/oauth/token`,
     response_types_supported: ["code"],
     grant_types_supported: ["authorization_code"],
