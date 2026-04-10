@@ -13,7 +13,7 @@
  *   client_id      — ignored (public client, no registration required)
  */
 import { pkce } from "@/lib/server/pkce-store";
-import { randomToken } from "@/lib/server/tokens";
+import { randomToken, verifyClientId } from "@/lib/server/tokens";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +58,7 @@ export async function GET(req: Request) {
   const challengeMethod = url.searchParams.get("code_challenge_method") ?? "S256";
   const redirectUri = url.searchParams.get("redirect_uri");
   const state = url.searchParams.get("state") ?? "";
+  const clientId = url.searchParams.get("client_id") ?? "";
 
   if (responseType !== "code") {
     return Response.json({ error: "unsupported_response_type" }, { status: 400 });
@@ -80,7 +81,14 @@ export async function GET(req: Request) {
       { status: 400 }
     );
   }
-  if (!isAllowedRedirectUri(redirectUri)) {
+  // Check redirect_uri against the client's registered URIs (encoded in the
+  // client_id JWT) first, then fall back to the static allowlist.
+  const registeredUris = verifyClientId(clientId);
+  const isAllowed = registeredUris
+    ? registeredUris.includes(redirectUri)
+    : isAllowedRedirectUri(redirectUri);
+
+  if (!isAllowed) {
     return Response.json(
       { error: "invalid_request", error_description: "redirect_uri not allowed" },
       { status: 400 }

@@ -82,3 +82,30 @@ export function safeEqual(a: string, b: string): boolean {
 export function randomToken(bytes = 32): string {
   return randomBytes(bytes).toString("base64url");
 }
+
+/**
+ * Signs a set of redirect_uris into a client_id JWT.
+ *
+ * This makes client registration stateless: instead of storing registrations
+ * in a database, we encode the allowed redirect_uris directly into the
+ * client_id. The authorize endpoint verifies the signature and trusts whatever
+ * URIs were registered, so any MCP client works without a per-client allowlist.
+ */
+export function signClientId(redirectUris: string[]): string {
+  return jwt.sign({ redirect_uris: redirectUris }, getSecret(), { algorithm: "HS256" });
+}
+
+/**
+ * Verifies a client_id JWT and returns its redirect_uris, or null if invalid.
+ */
+export function verifyClientId(clientId: string): string[] | null {
+  try {
+    const payload = jwt.verify(clientId, getSecret(), { algorithms: ["HS256"] });
+    if (typeof payload === "object" && Array.isArray(payload.redirect_uris)) {
+      return payload.redirect_uris as string[];
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}

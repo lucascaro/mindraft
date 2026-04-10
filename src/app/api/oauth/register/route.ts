@@ -1,12 +1,13 @@
 /**
  * OAuth 2.0 Dynamic Client Registration (RFC 7591)
  *
- * MCP clients (e.g. Claude) call this endpoint to register themselves before
- * starting the authorization flow. We don't enforce per-client restrictions —
- * the authorize endpoint ignores client_id — so we simply echo back the
- * submitted metadata with a generated client_id.
+ * MCP clients call this endpoint to register themselves before starting the
+ * authorization flow. Rather than storing registrations in a database, we encode
+ * the client's redirect_uris into a signed JWT and return it as the client_id.
+ * The authorize endpoint verifies the signature and allows whatever URIs were
+ * registered — so any MCP client works without a per-client allowlist.
  */
-import { randomToken } from "@/lib/server/tokens";
+import { signClientId } from "@/lib/server/tokens";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,11 @@ export async function POST(req: Request) {
     // empty body is fine
   }
 
-  const clientId = randomToken(16);
+  const redirectUris = Array.isArray(body.redirect_uris)
+    ? (body.redirect_uris as unknown[]).filter((u): u is string => typeof u === "string")
+    : [];
+
+  const clientId = signClientId(redirectUris);
 
   return Response.json(
     { ...body, client_id: clientId },
