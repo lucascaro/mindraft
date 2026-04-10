@@ -9,7 +9,8 @@ import {
 } from "react";
 import {
   onAuthStateChanged,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut as firebaseSignOut,
   deleteUser,
   reauthenticateWithPopup,
@@ -55,7 +56,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       return;
     }
-    const unsubscribe = onAuthStateChanged(getAuthInstance(), (user) => {
+    const auth = getAuthInstance();
+    // Capture the result (or error) from a redirect-based sign-in that
+    // just completed. The resolved user is also picked up by
+    // onAuthStateChanged, so we only need this for error handling.
+    getRedirectResult(auth).catch(() => {
+      // Redirect result errors (e.g. account-exists-with-different-credential)
+      // are silently swallowed here; onAuthStateChanged still fires with null.
+    });
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
       setLoading(false);
     });
@@ -63,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signInWithGoogle = async () => {
-    await signInWithPopup(getAuthInstance(), googleProvider);
+    await signInWithRedirect(getAuthInstance(), googleProvider);
   };
 
   const signOut = async () => {
