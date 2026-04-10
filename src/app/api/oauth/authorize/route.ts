@@ -12,7 +12,7 @@
  *   state          — opaque value the client uses to prevent CSRF
  *   client_id      — ignored (public client, no registration required)
  */
-import { pkce } from "@/lib/server/pkce-store";
+import { sessions } from "@/lib/server/oauth-store";
 import { randomToken, verifyClientId } from "@/lib/server/tokens";
 
 export const dynamic = "force-dynamic";
@@ -97,11 +97,18 @@ export async function GET(req: Request) {
 
   const sessionId = randomToken();
   try {
-    pkce.set(sessionId, challenge, redirectUri, state, clientInfo?.clientName);
-  } catch {
+    await sessions.set(
+      sessionId,
+      challenge,
+      redirectUri,
+      state,
+      clientInfo?.clientName ?? null,
+    );
+  } catch (e) {
+    console.error("[oauth] failed to persist authorize session", e);
     return Response.json(
-      { error: "server_error", error_description: "Too many pending sessions. Try again later." },
-      { status: 503 }
+      { error: "server_error", error_description: "Could not start sign-in. Try again." },
+      { status: 500 }
     );
   }
 

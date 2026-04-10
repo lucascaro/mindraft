@@ -114,10 +114,12 @@ Ideas have three statuses: `raw` (default), `in-progress`, `developed`.
 
 ## Security model
 
-- **OAuth 2.0 PKCE** — agents connect via a standard authorization code flow with S256 challenge. No passwords or API keys are ever stored by the agent.
+- **OAuth 2.1 with PKCE** — agents connect via a standard authorization code flow with S256 challenge. No passwords or API keys are ever stored by the agent.
 - **Google sign-in** — authentication is handled entirely by Firebase / Google. Mindraft never sees your password.
 - **Per-user isolation** — access tokens are bound to a specific Firebase UID. An agent can only access ideas belonging to the authenticated user. The `userId` is never accepted as a tool parameter.
-- **24-hour tokens** — access tokens expire after 24 hours. MCP clients re-authenticate automatically when the token expires.
+- **Short-lived access tokens** — access tokens expire after 1 hour. MCP clients use a refresh token to silently mint a new one.
+- **Rotating refresh tokens** — refresh tokens have a 30-day absolute lifetime and are rotated on every use. Reusing an already-rotated refresh token revokes the entire family, catching the scenario where a token is stolen and used in parallel with the legitimate client.
+- **Token revocation** — `/api/oauth/revoke` (RFC 7009) accepts a refresh token and revokes it immediately. Previously-issued access tokens remain valid until their 1-hour JWT expiry.
 - **Firebase Admin SDK** — used server-side only to verify ID tokens and access Firestore. The service account credentials never leave the server.
 
 ---
@@ -140,11 +142,21 @@ MCP client → opens browser to /connect?session=<id>
   server verifies ID token, issues short-lived code
   browser redirects back to MCP client with ?code=…
 
-MCP client → POST /api/oauth/token  { code, code_verifier }
-  ← { access_token, token_type: "bearer", expires_in: 86400 }
+MCP client → POST /api/oauth/token  { grant_type: "authorization_code", code, code_verifier }
+  ← { access_token, token_type: "bearer", expires_in: 3600, refresh_token }
 
-MCP client → POST /api/mcp  Authorization: Bearer <token>
+MCP client → POST /api/mcp  Authorization: Bearer <access_token>
   ← MCP tool responses
+
+# When the access token expires, the client silently refreshes:
+
+MCP client → POST /api/oauth/token  { grant_type: "refresh_token", refresh_token }
+  ← { access_token, token_type: "bearer", expires_in: 3600, refresh_token: <rotated> }
+
+# On disconnect, the client can revoke its refresh token:
+
+MCP client → POST /api/oauth/revoke  { token: <refresh_token> }
+  ← 200 OK
 ```
 
 ---
@@ -156,6 +168,10 @@ MCP client → POST /api/mcp  Authorization: Bearer <token>
 **"invalid_grant: PKCE verification failed"** — The MCP client sent a mismatched `code_verifier`. This is usually a client bug; try restarting the MCP client and reconnecting.
 
 **"Code expired or already used"** — Auth codes expire in 5 minutes. Start the sign-in flow again.
+
+**"invalid_grant: reused"** — A refresh token was presented twice. The server revoked the entire token family as a security measure. The MCP client will automatically trigger a fresh authorization flow (browser sign-in) on next use.
+
+**"invalid_grant: expired"** — The 30-day absolute refresh token lifetime has passed. Sign in again.
 
 **Private key format errors** — Make sure the key in `.env.local` uses literal `\n` sequences. A correctly formatted key looks like: `"-----BEGIN PRIVATE KEY-----\nMIIEv...\n-----END PRIVATE KEY-----\n"` (one long line with `\n` for each newline).
 

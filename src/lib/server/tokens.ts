@@ -1,8 +1,11 @@
 /**
- * JWT utilities for MCP access tokens.
+ * JWT utilities for MCP access tokens and helpers for refresh tokens.
  *
- * Access tokens are short-lived (24 h) JWTs signed with MCP_JWT_SECRET.
+ * Access tokens are short-lived (1 h) JWTs signed with MCP_JWT_SECRET.
  * They carry only the Firebase UID — nothing else is needed.
+ *
+ * Refresh tokens are opaque random strings (not JWTs); only their SHA-256
+ * hash is persisted in Firestore. See lib/server/refresh-tokens.ts.
  */
 
 import "server-only";
@@ -11,8 +14,13 @@ import { createHash, randomBytes, timingSafeEqual } from "crypto";
 
 // 1 hour — short enough to limit blast radius if a token is stolen, while
 // still being long enough that normal agent sessions don't need to re-auth.
-// MCP clients automatically re-authorize when they receive a 401.
+// MCP clients use the refresh_token grant to silently mint new access tokens.
 const EXPIRY_SECONDS = 60 * 60;
+
+// 30 days absolute — a refresh token family cannot outlive this, even across
+// rotations. Rotation preserves the original absoluteExpiresAt; it is never
+// extended. This caps the blast radius of a leaked refresh token.
+export const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 function getSecret(): string {
   const secret = process.env.MCP_JWT_SECRET;
@@ -58,6 +66,18 @@ export function pkceChallenge(verifier: string): string {
   return createHash("sha256")
     .update(verifier)
     .digest("base64url");
+}
+
+/**
+ * SHA-256 of an opaque refresh token, hex-encoded.
+ *
+ * Used as the Firestore document ID so a DB breach does not leak usable tokens.
+ * Plain SHA-256 (not HMAC) is sufficient because the raw token already has
+ * 256 bits of entropy; keying the hash to MCP_JWT_SECRET would only couple
+ * refresh-token lookups to secret rotation with no security benefit.
+ */
+export function hashToken(raw: string): string {
+  return createHash("sha256").update(raw).digest("hex");
 }
 
 /**

@@ -12,7 +12,7 @@
  *   or { error: string }     — something went wrong
  */
 import { getAdminAuth } from "@/lib/server/admin";
-import { pkce, codes } from "@/lib/server/pkce-store";
+import { sessions, codes } from "@/lib/server/oauth-store";
 import { randomToken } from "@/lib/server/tokens";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +31,7 @@ export async function POST(req: Request) {
   }
 
   // Resolve the PKCE session.
-  const entry = pkce.get(session);
+  const entry = await sessions.get(session);
   if (!entry) {
     return Response.json({ error: "invalid_request", error_description: "Session expired or invalid" }, { status: 400 });
   }
@@ -46,14 +46,16 @@ export async function POST(req: Request) {
   }
 
   // Issue a short-lived auth code, carrying the challenge for PKCE verification
-  // at token-exchange time. Clean up the PKCE session entry.
+  // at token-exchange time. Also carry clientName so the refresh token issued
+  // later can record which client it belongs to. Clean up the PKCE session.
   const code = randomToken();
   try {
-    codes.set(code, uid, entry.challenge);
-  } catch {
-    return Response.json({ error: "server_error", error_description: "Server busy. Try again." }, { status: 503 });
+    await codes.set(code, uid, entry.challenge, entry.clientName);
+  } catch (e) {
+    console.error("[oauth] failed to persist auth code", e);
+    return Response.json({ error: "server_error", error_description: "Server error. Try again." }, { status: 500 });
   }
-  pkce.delete(session);
+  await sessions.delete(session);
 
   // Build the redirect URL for the browser.
   const redirectUrl = new URL(entry.redirectUri);

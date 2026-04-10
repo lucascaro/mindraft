@@ -5,7 +5,7 @@
  * Only clientName is exposed — the PKCE challenge and redirectUri
  * are never sent to the browser.
  */
-import { pkce } from "@/lib/server/pkce-store";
+import { sessions } from "@/lib/server/oauth-store";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +15,7 @@ export async function GET(req: Request) {
     return Response.json({ error: "missing session" }, { status: 400 });
   }
 
-  const entry = pkce.get(session);
+  const entry = await sessions.get(session);
   if (!entry) {
     return Response.json({ error: "session not found" }, { status: 404 });
   }
