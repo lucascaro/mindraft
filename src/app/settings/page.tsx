@@ -196,7 +196,7 @@ export default function SettingsPage() {
         </section>
 
         {/* AI Agent / MCP */}
-        <section className="rounded-lg border bg-card p-5">
+        <section id="mcp" className="rounded-lg border bg-card p-5">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-2">
             <Bot className="h-4 w-4" />
             AI Agent (MCP)
@@ -280,6 +280,14 @@ export default function SettingsPage() {
             About
           </h2>
           <ul className="space-y-2 text-sm">
+            <li>
+              <Link
+                href="/mcp"
+                className="text-foreground hover:underline underline-offset-4 inline-flex items-center gap-1"
+              >
+                How to use AI agent with your ideas
+              </Link>
+            </li>
             <li>
               <Link
                 href="/privacy"
