@@ -236,7 +236,7 @@ export default function SettingsPage() {
                 Claude Desktop / claude_desktop_config.json
               </p>
               <div className="relative">
-                <pre className="rounded bg-muted px-3 py-2 text-xs font-mono overflow-x-auto pr-10">
+                <pre className="rounded bg-muted px-3 py-2 text-xs font-mono overflow-x-auto pr-10 max-w-full">
                   {claudeConfig}
                 </pre>
                 <Button
@@ -258,7 +258,7 @@ export default function SettingsPage() {
               <p className="text-xs font-medium text-muted-foreground mb-1">
                 Claude Code (CLI)
               </p>
-              <pre className="rounded bg-muted px-3 py-2 text-xs font-mono overflow-x-auto">
+              <pre className="rounded bg-muted px-3 py-2 text-xs font-mono overflow-x-auto max-w-full">
                 {`claude mcp add mindraft --transport http ${mcpUrl}`}
               </pre>
             </div>
