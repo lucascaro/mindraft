@@ -4,107 +4,87 @@
  * /connect — OAuth authorization page.
  *
  * Users are redirected here by their MCP client when connecting to mindraft.
- * They sign in with Google via signInWithRedirect (more reliable than popup
- * when the page is reached via an OAuth redirect chain), then this page posts
- * their Firebase ID token to /api/oauth/callback, which issues the auth code
- * and redirects the browser back to the MCP client.
+ * If they are already signed in to the main app (same origin, same Firebase
+ * project), we reuse their existing session — no new sign-in required. We
+ * post their ID token to /api/oauth/callback, which issues the auth code and
+ * redirects the browser back to the MCP client.
+ *
+ * If they are not signed in, we redirect them to the main app's sign-in page,
+ * which preserves this URL so they come back here after signing in.
  *
  * URL params:
  *   session — opaque session ID linking back to the PKCE state
- *
- * Because signInWithRedirect navigates away from this page, the session ID is
- * stored in sessionStorage before leaving and restored on return.
  */
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { signInWithRedirect, getRedirectResult, getIdToken } from "firebase/auth";
-import { getAuthInstance, googleProvider } from "@/lib/firebase";
+import { onAuthStateChanged, getIdToken, type User } from "firebase/auth";
+import { getAuthInstance } from "@/lib/firebase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Lightbulb, Bot } from "lucide-react";
 
-const SESSION_KEY = "mcp_oauth_session";
-
 type State =
-  | { kind: "idle" }
-  | { kind: "signing-in" }
+  | { kind: "loading" }
   | { kind: "connecting" }
   | { kind: "done" }
   | { kind: "error"; message: string };
 
+async function completeConnection(user: User, session: string): Promise<string> {
+  const idToken = await getIdToken(user, /* forceRefresh */ true);
+  const res = await fetch("/api/oauth/callback", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ idToken, session }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error_description ?? body.error ?? "Connection failed");
+  }
+  const { redirectUrl } = await res.json();
+  return redirectUrl;
+}
+
 export default function ConnectPage() {
   const searchParams = useSearchParams();
-  const [session, setSession] = useState<string | null>(null);
-  const [state, setState] = useState<State>({ kind: "idle" });
+  const session = searchParams.get("session");
+  const [state, setState] = useState<State>({ kind: "loading" });
 
-  // On mount: pick up session from URL or from sessionStorage (post-redirect).
   useEffect(() => {
-    const urlSession = searchParams.get("session");
-    if (urlSession) {
-      sessionStorage.setItem(SESSION_KEY, urlSession);
-      setSession(urlSession);
-    } else {
-      const stored = sessionStorage.getItem(SESSION_KEY);
-      setSession(stored);
-    }
-  }, [searchParams]);
-
-  // After Google redirects back, complete the sign-in and exchange the token.
-  useEffect(() => {
-    if (session === null) return; // still initialising
-
-    getRedirectResult(getAuthInstance())
-      .then(async (result) => {
-        if (!result) return; // no redirect in progress — normal page load
-        setState({ kind: "connecting" });
-
-        const storedSession = sessionStorage.getItem(SESSION_KEY);
-        if (!storedSession) {
-          setState({ kind: "error", message: "Session expired. Please retry from your AI agent." });
-          return;
-        }
-
-        const idToken = await getIdToken(result.user, /* forceRefresh */ true);
-        const res = await fetch("/api/oauth/callback", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ idToken, session: storedSession }),
-        });
-
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.error_description ?? body.error ?? "Connection failed");
-        }
-
-        sessionStorage.removeItem(SESSION_KEY);
-        const { redirectUrl } = await res.json();
-        setState({ kind: "done" });
-        window.location.href = redirectUrl;
-      })
-      .catch((err: unknown) => {
-        const message = err instanceof Error ? err.message : "Something went wrong";
-        setState({ kind: "error", message });
-      });
-  }, [session]);
-
-  // Validate session before showing the button.
-  useEffect(() => {
-    if (session === null) return; // still initialising
     if (!session) {
       setState({ kind: "error", message: "Invalid link — no session ID. Please retry from your AI agent." });
+      return;
     }
+
+    // Wait for Firebase to restore the auth state from the existing session.
+    const unsubscribe = onAuthStateChanged(getAuthInstance(), async (user) => {
+      unsubscribe(); // only need the first resolved state
+
+      if (!user) {
+        // Not signed in — send them to the login page, which will redirect back here.
+        window.location.href = `/login?redirect=${encodeURIComponent(window.location.href)}`;
+        return;
+      }
+
+      // Already signed in — use the existing session to complete the OAuth flow.
+      setState({ kind: "connecting" });
+      try {
+        const redirectUrl = await completeConnection(user, session);
+        setState({ kind: "done" });
+        window.location.href = redirectUrl;
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Something went wrong";
+        setState({ kind: "error", message });
+      }
+    });
+
+    return unsubscribe;
   }, [session]);
 
-  async function handleConnect() {
-    if (!session) return;
-    setState({ kind: "signing-in" });
-    // Store session before navigating away so it survives the redirect.
-    sessionStorage.setItem(SESSION_KEY, session);
-    await signInWithRedirect(getAuthInstance(), googleProvider);
-  }
-
-  const isLoading = state.kind === "signing-in" || state.kind === "connecting" || state.kind === "done";
+  const label =
+    state.kind === "loading" ? "Checking your session…"
+    : state.kind === "connecting" ? "Connecting…"
+    : state.kind === "done" ? "Connected! Redirecting back to your agent…"
+    : null;
 
   return (
     <div className="flex min-h-dvh items-center justify-center p-4 bg-gradient-to-b from-background via-background to-primary/5">
@@ -121,7 +101,7 @@ export default function ConnectPage() {
             Connect your AI agent
           </CardTitle>
           <CardDescription className="text-base mt-2">
-            Sign in to allow your AI agent to read and manage your ideas.
+            Authorizing access to your ideas.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -129,23 +109,8 @@ export default function ConnectPage() {
             <p className="text-sm text-destructive text-center rounded-md bg-destructive/10 px-3 py-2">
               {state.message}
             </p>
-          ) : state.kind === "done" ? (
-            <p className="text-sm text-center text-muted-foreground">
-              Connected! Redirecting back to your agent…
-            </p>
           ) : (
-            <Button
-              onClick={handleConnect}
-              className="w-full"
-              size="lg"
-              disabled={isLoading || !session}
-            >
-              {state.kind === "signing-in"
-                ? "Signing in…"
-                : state.kind === "connecting"
-                  ? "Connecting…"
-                  : "Sign in with Google"}
-            </Button>
+            <p className="text-sm text-center text-muted-foreground">{label}</p>
           )}
           <p className="text-xs text-muted-foreground text-center">
             Your ideas are only accessible to you. This connection uses your existing Mindraft account.
