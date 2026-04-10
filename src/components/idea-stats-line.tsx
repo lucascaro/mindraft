@@ -16,8 +16,8 @@ export function IdeaStatsLine({ ideas }: Props) {
   }, {});
 
   return (
-    <p className="text-xs text-muted-foreground mb-4">
-      You have {total} idea{total !== 1 ? "s" : ""}
+    <p className="text-xs text-muted-foreground my-1">
+      {total} idea{total !== 1 ? "s" : ""}
       {IDEA_STATUSES.map(({ value, label }) => (
         <span key={value}>
           {" · "}

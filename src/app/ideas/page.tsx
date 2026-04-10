@@ -177,7 +177,7 @@ export default function IdeasPage() {
       <div
         className="transition-opacity duration-200"
         style={{
-          marginBottom: 24,
+          marginBottom: 8,
           height: 40,
           opacity: user ? 1 : 0,
           pointerEvents: user ? "auto" : "none",
@@ -188,7 +188,7 @@ export default function IdeasPage() {
 
       {!showSkeleton && <IdeaStatsLine ideas={filteredIdeas} />}
 
-      <div style={{ minHeight: 200 }}>
+      <div style={{ minHeight: 200, marginTop: 8 }}>
         {showSkeleton ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {[0, 1, 2].map((i) => (
