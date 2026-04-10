@@ -201,7 +201,7 @@ export function __seedIdeas(seed: Idea[]) {
 
 // Expose helpers on window so Playwright can call them
 if (typeof window !== "undefined") {
-  (window as Record<string, unknown>).__e2eMockStore = {
+  (window as unknown as Record<string, unknown>).__e2eMockStore = {
     resetStore: __resetStore,
     seedIdeas: __seedIdeas,
     getIdeas: () => [...ideas],
