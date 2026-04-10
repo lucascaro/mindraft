@@ -32,7 +32,10 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        source: "/:path*",
+        // Exclude /__/* (proxied Firebase Auth handler/iframe) from
+        // X-Frame-Options: DENY — Firebase loads /__/auth/iframe in a
+        // hidden iframe to manage cross-origin auth state.
+        source: "/((?!__/).*)",
         headers: securityHeaders,
       },
     ];
