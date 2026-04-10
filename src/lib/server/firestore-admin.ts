@@ -60,7 +60,7 @@ export async function listIdeas(userId: string, opts: ListIdeasOptions = {}): Pr
   let q: FirebaseFirestore.Query = db
     .collection(COLLECTION)
     .where("userId", "==", userId)
-    .where("archived", "==", false);
+    .where("archived", "!=", true);
 
   if (opts.status) q = q.where("status", "==", opts.status);
   if (opts.tag) q = q.where("tags", "array-contains", opts.tag);
@@ -193,7 +193,7 @@ export async function searchIdeas(userId: string, query: string, limit = 50): Pr
   const snap = await db
     .collection(COLLECTION)
     .where("userId", "==", userId)
-    .where("archived", "==", false)
+    .where("archived", "!=", true)
     .orderBy("createdAt", "desc")
     .limit(500)
     .get();
