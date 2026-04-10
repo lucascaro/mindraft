@@ -114,7 +114,6 @@ export function SwipeToArchive({
         card.style.willChange = "transform";
       }
 
-      containerRef.current!.setPointerCapture(e.pointerId);
     },
     [enabled]
   );
@@ -134,6 +133,9 @@ export function SwipeToArchive({
         if (Math.abs(deltaX) > Math.abs(deltaY) && deltaX > 0) {
           isDragging.current = true;
           swipedRef.current = true;
+          // Capture pointer only once we confirm a rightward swipe,
+          // so simple taps/clicks propagate normally to children.
+          containerRef.current?.setPointerCapture(pointerId.current!);
         } else {
           // Vertical or leftward — bail out
           pointerId.current = null;
