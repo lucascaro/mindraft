@@ -57,28 +57,36 @@ export interface ListIdeasOptions {
 
 export async function listIdeas(userId: string, opts: ListIdeasOptions = {}): Promise<IdeaSummary[]> {
   const db = getAdminDb();
+  // Note: we cannot use .where("archived", "!=", true) because Firestore's !=
+  // operator excludes documents where the field is absent. UI-created ideas may
+  // lack the archived field entirely. Filter archived in-memory instead.
   let q: FirebaseFirestore.Query = db
     .collection(COLLECTION)
     .where("userId", "==", userId)
-    .where("archived", "!=", true);
+    .orderBy("createdAt", "desc");
 
   if (opts.status) q = q.where("status", "==", opts.status);
   if (opts.tag) q = q.where("tags", "array-contains", opts.tag);
 
-  const snap = await q.orderBy("createdAt", "desc").limit(opts.limit ?? 50).get();
-  let results = snap.docs.map((d) => {
-    const full = serialize(d.id, d.data());
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { body: _, ...summary } = full;
-    return summary;
-  });
+  // Fetch enough docs to satisfy the limit after in-memory archived filtering.
+  const fetchLimit = Math.min((opts.limit ?? 50) * 4, 500);
+  const snap = await q.limit(fetchLimit).get();
+
+  let results = snap.docs
+    .map((d) => {
+      const full = serialize(d.id, d.data());
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { body: _, ...summary } = full;
+      return summary;
+    })
+    .filter((i) => !i.archived);
 
   if (opts.search) {
-    const q = opts.search.toLowerCase();
-    results = results.filter((i) => i.title.toLowerCase().includes(q));
+    const sq = opts.search.toLowerCase();
+    results = results.filter((i) => i.title.toLowerCase().includes(sq));
   }
 
-  return results;
+  return results.slice(0, opts.limit ?? 50);
 }
 
 export async function listArchivedIdeas(userId: string, limit = 50): Promise<IdeaSummary[]> {

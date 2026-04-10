@@ -71,6 +71,7 @@ export async function addIdea(
     body,
     tags: [],
     status: "raw",
+    archived: false,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     userId,
