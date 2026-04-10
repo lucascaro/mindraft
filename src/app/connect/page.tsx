@@ -4,21 +4,27 @@
  * /connect — OAuth authorization page.
  *
  * Users are redirected here by their MCP client when connecting to mindraft.
- * They sign in with Google (exactly like the main login page), then this page
- * posts their Firebase ID token to /api/oauth/callback, which issues the
- * auth code and redirects the browser back to the MCP client.
+ * They sign in with Google via signInWithRedirect (more reliable than popup
+ * when the page is reached via an OAuth redirect chain), then this page posts
+ * their Firebase ID token to /api/oauth/callback, which issues the auth code
+ * and redirects the browser back to the MCP client.
  *
  * URL params:
  *   session — opaque session ID linking back to the PKCE state
+ *
+ * Because signInWithRedirect navigates away from this page, the session ID is
+ * stored in sessionStorage before leaving and restored on return.
  */
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { signInWithPopup, getIdToken } from "firebase/auth";
+import { signInWithRedirect, getRedirectResult, getIdToken } from "firebase/auth";
 import { getAuthInstance, googleProvider } from "@/lib/firebase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Lightbulb, Bot } from "lucide-react";
+
+const SESSION_KEY = "mcp_oauth_session";
 
 type State =
   | { kind: "idle" }
@@ -29,10 +35,62 @@ type State =
 
 export default function ConnectPage() {
   const searchParams = useSearchParams();
-  const session = searchParams.get("session");
+  const [session, setSession] = useState<string | null>(null);
   const [state, setState] = useState<State>({ kind: "idle" });
 
+  // On mount: pick up session from URL or from sessionStorage (post-redirect).
   useEffect(() => {
+    const urlSession = searchParams.get("session");
+    if (urlSession) {
+      sessionStorage.setItem(SESSION_KEY, urlSession);
+      setSession(urlSession);
+    } else {
+      const stored = sessionStorage.getItem(SESSION_KEY);
+      setSession(stored);
+    }
+  }, [searchParams]);
+
+  // After Google redirects back, complete the sign-in and exchange the token.
+  useEffect(() => {
+    if (session === null) return; // still initialising
+
+    getRedirectResult(getAuthInstance())
+      .then(async (result) => {
+        if (!result) return; // no redirect in progress — normal page load
+        setState({ kind: "connecting" });
+
+        const storedSession = sessionStorage.getItem(SESSION_KEY);
+        if (!storedSession) {
+          setState({ kind: "error", message: "Session expired. Please retry from your AI agent." });
+          return;
+        }
+
+        const idToken = await getIdToken(result.user, /* forceRefresh */ true);
+        const res = await fetch("/api/oauth/callback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ idToken, session: storedSession }),
+        });
+
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error_description ?? body.error ?? "Connection failed");
+        }
+
+        sessionStorage.removeItem(SESSION_KEY);
+        const { redirectUrl } = await res.json();
+        setState({ kind: "done" });
+        window.location.href = redirectUrl;
+      })
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : "Something went wrong";
+        setState({ kind: "error", message });
+      });
+  }, [session]);
+
+  // Validate session before showing the button.
+  useEffect(() => {
+    if (session === null) return; // still initialising
     if (!session) {
       setState({ kind: "error", message: "Invalid link — no session ID. Please retry from your AI agent." });
     }
@@ -41,34 +99,9 @@ export default function ConnectPage() {
   async function handleConnect() {
     if (!session) return;
     setState({ kind: "signing-in" });
-
-    try {
-      // Sign in with Google (same provider as the main app).
-      const result = await signInWithPopup(getAuthInstance(), googleProvider);
-      setState({ kind: "connecting" });
-
-      // Get a fresh ID token and send it to the server.
-      const idToken = await getIdToken(result.user, /* forceRefresh */ true);
-      const res = await fetch("/api/oauth/callback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken, session }),
-      });
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error_description ?? body.error ?? "Connection failed");
-      }
-
-      const { redirectUrl } = await res.json();
-      setState({ kind: "done" });
-
-      // Redirect the browser back to the MCP client.
-      window.location.href = redirectUrl;
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Something went wrong";
-      setState({ kind: "error", message });
-    }
+    // Store session before navigating away so it survives the redirect.
+    sessionStorage.setItem(SESSION_KEY, session);
+    await signInWithRedirect(getAuthInstance(), googleProvider);
   }
 
   const isLoading = state.kind === "signing-in" || state.kind === "connecting" || state.kind === "done";
