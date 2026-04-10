@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { fn } from "@storybook/test";
+import { fn } from "storybook/test";
 import { IdeaCard } from "../idea-card";
 import { ThemeProvider } from "@/lib/theme-context";
 import { TagColorProvider } from "@/lib/tag-color-context";

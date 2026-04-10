@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { fn } from "@storybook/test";
+import { fn } from "storybook/test";
 import { SwipeToArchive } from "../swipe-to-archive";
 import { ThemeProvider } from "@/lib/theme-context";
 import { Card, CardContent, CardHeader } from "../ui/card";
