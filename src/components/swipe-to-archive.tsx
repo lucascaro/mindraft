@@ -114,7 +114,6 @@ export function SwipeToArchive({
         card.style.willChange = "transform";
       }
 
-      e.preventDefault();
       containerRef.current!.setPointerCapture(e.pointerId);
     },
     [enabled]
