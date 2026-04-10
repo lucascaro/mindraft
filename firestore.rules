@@ -31,8 +31,9 @@ service cloud.firestore {
           && validStatus(d.status)
           && d.createdAt is timestamp
           && d.updatedAt is timestamp
-          && d.keys().hasOnly(['userId', 'title', 'body', 'tags', 'status', 'createdAt', 'updatedAt', 'sortOrder'])
-          && (!('sortOrder' in d.keys()) || d.sortOrder is number);
+          && d.keys().hasOnly(['userId', 'title', 'body', 'tags', 'status', 'createdAt', 'updatedAt', 'sortOrder', 'refineNext'])
+          && (!('sortOrder' in d.keys()) || d.sortOrder is number)
+          && (!('refineNext' in d.keys()) || d.refineNext is bool);
       }
 
       // Validates an update. `request.resource.data` is the full merged
@@ -48,10 +49,11 @@ service cloud.firestore {
           && d.body is string && d.body.size() <= 50000
           && validTags(d.tags)
           && validStatus(d.status)
-          && d.keys().hasOnly(['userId', 'title', 'body', 'tags', 'status', 'createdAt', 'updatedAt', 'archived', 'archivedAt', 'sortOrder'])
+          && d.keys().hasOnly(['userId', 'title', 'body', 'tags', 'status', 'createdAt', 'updatedAt', 'archived', 'archivedAt', 'sortOrder', 'refineNext'])
           && (!('archived' in d.keys()) || d.archived is bool)
           && (!('archivedAt' in d.keys()) || d.archivedAt is timestamp)
-          && (!('sortOrder' in d.keys()) || d.sortOrder is number);
+          && (!('sortOrder' in d.keys()) || d.sortOrder is number)
+          && (!('refineNext' in d.keys()) || d.refineNext is bool);
       }
 
       allow read: if isOwner();
