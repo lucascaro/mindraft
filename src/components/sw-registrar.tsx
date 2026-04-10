@@ -40,10 +40,10 @@ export function ServiceWorkerRegistrar() {
   if (!waitingSW) return null;
 
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-lg border bg-background px-4 py-3 shadow-lg text-sm">
+    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 whitespace-nowrap rounded-lg border-2 border-primary bg-background px-4 py-3 shadow-lg text-sm">
       <span>A new version is available.</span>
       <button
-        className="font-medium text-primary underline-offset-2 hover:underline"
+        className="font-semibold text-primary underline-offset-2 hover:underline"
         onClick={() => waitingSW.postMessage("SKIP_WAITING")}
       >
         Refresh
