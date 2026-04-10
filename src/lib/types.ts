@@ -19,4 +19,5 @@ export type Idea = {
   userId: string;
   archived?: boolean;
   archivedAt?: Timestamp;
+  sortOrder?: number;
 };

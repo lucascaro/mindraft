@@ -28,6 +28,7 @@ export interface SerializedIdea {
   updatedAt: string;
   archived?: boolean;
   archivedAt?: string;
+  sortOrder?: number;
 }
 
 // Lightweight summary — no body — for list operations.
@@ -45,6 +46,7 @@ function serialize(id: string, data: FirebaseFirestore.DocumentData): Serialized
     updatedAt: data.updatedAt?.toDate().toISOString() ?? new Date(0).toISOString(),
     ...(data.archived ? { archived: true } : {}),
     ...(data.archivedAt ? { archivedAt: data.archivedAt.toDate().toISOString() } : {}),
+    ...(data.sortOrder != null ? { sortOrder: data.sortOrder } : {}),
   };
 }
 
@@ -130,6 +132,7 @@ export async function createIdea(
     tags,
     status: "raw" as IdeaStatus,
     archived: false,
+    sortOrder: 0,
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
   });

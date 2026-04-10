@@ -29,6 +29,18 @@ function sortByCreatedAt(ideas: Idea[]) {
   });
 }
 
+function sortBySortOrder(ideas: Idea[]) {
+  return ideas.sort((a, b) => {
+    const aOrder = a.sortOrder ?? Infinity;
+    const bOrder = b.sortOrder ?? Infinity;
+    if (aOrder !== bOrder) return aOrder - bOrder;
+    // Secondary sort: newest first for ideas with same/no sortOrder
+    const aTime = a.createdAt?.toMillis?.() ?? 0;
+    const bTime = b.createdAt?.toMillis?.() ?? 0;
+    return bTime - aTime;
+  });
+}
+
 function sortByArchivedAt(ideas: Idea[]) {
   return ideas.sort((a, b) => {
     const aTime = a.archivedAt?.toMillis?.() ?? 0;
@@ -54,7 +66,7 @@ export function subscribeToIdeas(
     }) as Idea);
 
     if (filter === "active") {
-      callback(sortByCreatedAt(all.filter((i) => !i.archived)));
+      callback(sortBySortOrder(all.filter((i) => !i.archived)));
     } else {
       callback(sortByArchivedAt(all.filter((i) => i.archived === true)));
     }
@@ -72,6 +84,7 @@ export async function addIdea(
     tags: [],
     status: "raw",
     archived: false,
+    sortOrder: 0,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     userId,
@@ -109,6 +122,15 @@ export async function restoreIdea(id: string) {
 
 export async function deleteIdea(id: string) {
   return deleteDoc(doc(getDb(), COLLECTION, id));
+}
+
+export async function reorderIdeas(updates: { id: string; sortOrder: number }[]) {
+  const batch = writeBatch(getDb());
+  for (const { id, sortOrder } of updates) {
+    const ref = doc(getDb(), COLLECTION, id);
+    batch.update(ref, { sortOrder, updatedAt: serverTimestamp() });
+  }
+  await batch.commit();
 }
 
 // ── Tag color overrides ──────────────────────────────────────────────────────

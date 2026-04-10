@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 import { subscribeToIdeas } from "@/lib/firestore";
 import { useIdeaFilter } from "@/lib/use-idea-filter";
 import { QuickCapture } from "@/components/quick-capture";
-import { IdeaCard } from "@/components/idea-card";
+import { SortableIdeaList } from "@/components/sortable-idea-list";
 import { IdeaFilterBar } from "@/components/idea-filter-bar";
 import { ActiveFilterStrip } from "@/components/active-filter-strip";
 import { IdeaStatsLine } from "@/components/idea-stats-line";
@@ -216,18 +216,13 @@ export default function IdeasPage() {
             </button>
           </div>
         ) : (
-          <ul style={{ display: "flex", flexDirection: "column", gap: 12, listStyle: "none", padding: 0, margin: 0 }}>
-            {filteredIdeas.map((idea) => (
-              <li key={idea.id}>
-                <IdeaCard
-                  idea={idea}
-                  expanded={expandedId === idea.id}
-                  onExpand={() => setExpandedId(idea.id)}
-                  onCollapse={() => setExpandedId(null)}
-                />
-              </li>
-            ))}
-          </ul>
+          <SortableIdeaList
+            ideas={filteredIdeas}
+            expandedId={expandedId}
+            onExpand={(id) => setExpandedId(id)}
+            onCollapse={() => setExpandedId(null)}
+            reorderEnabled={!isActive}
+          />
         )}
       </div>
     </main>
