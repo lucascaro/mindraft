@@ -10,6 +10,7 @@ import { QuickCapture } from "@/components/quick-capture";
 import { IdeaCard } from "@/components/idea-card";
 import { IdeaFilterBar } from "@/components/idea-filter-bar";
 import { ActiveFilterStrip } from "@/components/active-filter-strip";
+import { IdeaStatsLine } from "@/components/idea-stats-line";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Archive, LogOut, Lightbulb, Settings, SlidersHorizontal, Search } from "lucide-react";
@@ -184,6 +185,8 @@ export default function IdeasPage() {
       >
         <QuickCapture userId={user?.uid ?? ""} />
       </div>
+
+      {!showSkeleton && <IdeaStatsLine ideas={filteredIdeas} />}
 
       <div style={{ minHeight: 200 }}>
         {showSkeleton ? (
