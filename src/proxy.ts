@@ -49,7 +49,7 @@ export const config = {
     // pure JSON API routes (which don't render HTML and don't need a CSP nonce).
     {
       source:
-        "/((?!_next/static|_next/image|favicon.ico|icon.svg|manifest.json|sw.js|api/.*).*)",
+        "/((?!_next/static|_next/image|favicon.ico|icon.svg|manifest.json|sw.js|api/.*|__/.*).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },
