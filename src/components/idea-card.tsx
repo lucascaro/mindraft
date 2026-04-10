@@ -10,6 +10,8 @@ import { TagBadge } from "@/components/tag-badge";
 import { Archive, ArchiveRestore, Plus, Trash2, X } from "lucide-react";
 import { updateIdea, deleteIdea, archiveIdea, restoreIdea } from "@/lib/firestore";
 import { Idea, IdeaStatus, IDEA_STATUSES } from "@/lib/types";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 const statusColors: Record<string, string> = {
   raw: "bg-yellow-100 text-yellow-800 border-yellow-200",
@@ -212,9 +214,11 @@ export function IdeaCard({
       >
         <CardContent>
           {idea.body && (
-            <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-              {idea.body}
-            </p>
+            <div className="text-sm text-muted-foreground line-clamp-2 mb-2 [&_strong]:font-semibold [&_em]:italic [&_code]:font-mono [&_code]:bg-muted [&_code]:px-1 [&_code]:rounded [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {idea.body}
+              </ReactMarkdown>
+            </div>
           )}
           {idea.tags.length > 0 && (
             <div className="flex flex-wrap gap-1">
