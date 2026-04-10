@@ -21,10 +21,12 @@ import { useSearchParams } from "next/navigation";
 import { onAuthStateChanged, getIdToken, type User } from "firebase/auth";
 import { getAuthInstance } from "@/lib/firebase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Lightbulb, Bot } from "lucide-react";
 
 type State =
   | { kind: "loading" }
+  | { kind: "ready"; user: User }
   | { kind: "connecting" }
   | { kind: "done" }
   | { kind: "error"; message: string };
@@ -65,26 +67,26 @@ export default function ConnectPage() {
         return;
       }
 
-      // Already signed in — use the existing session to complete the OAuth flow.
-      setState({ kind: "connecting" });
-      try {
-        const redirectUrl = await completeConnection(user, session);
-        setState({ kind: "done" });
-        window.location.href = redirectUrl;
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Something went wrong";
-        setState({ kind: "error", message });
-      }
+      // Signed in — show the confirmation button. Don't connect yet.
+      setState({ kind: "ready", user });
     });
 
     return unsubscribe;
   }, [session]);
 
-  const label =
-    state.kind === "loading" ? "Checking your session…"
-    : state.kind === "connecting" ? "Connecting…"
-    : state.kind === "done" ? "Connected! Redirecting back to your agent…"
-    : null;
+  async function handleConnect() {
+    if (state.kind !== "ready" || !session) return;
+    const { user } = state;
+    setState({ kind: "connecting" });
+    try {
+      const redirectUrl = await completeConnection(user, session);
+      setState({ kind: "done" });
+      window.location.href = redirectUrl;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Something went wrong";
+      setState({ kind: "error", message });
+    }
+  }
 
   return (
     <div className="flex min-h-dvh items-center justify-center p-4 bg-gradient-to-b from-background via-background to-primary/5">
@@ -101,7 +103,7 @@ export default function ConnectPage() {
             Connect your AI agent
           </CardTitle>
           <CardDescription className="text-base mt-2">
-            Authorizing access to your ideas.
+            Allow your AI agent to read and manage your ideas.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -109,8 +111,21 @@ export default function ConnectPage() {
             <p className="text-sm text-destructive text-center rounded-md bg-destructive/10 px-3 py-2">
               {state.message}
             </p>
+          ) : state.kind === "ready" ? (
+            <>
+              <p className="text-sm text-center text-muted-foreground">
+                Signed in as <span className="font-medium text-foreground">{state.user.email}</span>
+              </p>
+              <Button onClick={handleConnect} className="w-full" size="lg">
+                Connect
+              </Button>
+            </>
           ) : (
-            <p className="text-sm text-center text-muted-foreground">{label}</p>
+            <p className="text-sm text-center text-muted-foreground">
+              {state.kind === "loading" ? "Checking your session…"
+                : state.kind === "connecting" ? "Connecting…"
+                : "Connected! Redirecting back to your agent…"}
+            </p>
           )}
           <p className="text-xs text-muted-foreground text-center">
             Your ideas are only accessible to you. This connection uses your existing Mindraft account.
