@@ -1,20 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export function ServiceWorkerRegistrar() {
-  const [waitingSW, setWaitingSW] = useState<ServiceWorker | null>(null);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const regRef = useRef<ServiceWorkerRegistration | null>(null);
 
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
 
     navigator.serviceWorker.register("/sw.js").then((reg) => {
+      regRef.current = reg;
+
       const onUpdateFound = () => {
         const newWorker = reg.installing;
         if (!newWorker) return;
         newWorker.addEventListener("statechange", () => {
           if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
-            setWaitingSW(newWorker);
+            setUpdateAvailable(true);
           }
         });
       };
@@ -24,7 +27,7 @@ export function ServiceWorkerRegistrar() {
 
       // SW already waiting (e.g. user returned to tab)
       if (reg.waiting && navigator.serviceWorker.controller) {
-        setWaitingSW(reg.waiting);
+        setUpdateAvailable(true);
       }
     }).catch(() => {});
 
@@ -37,14 +40,20 @@ export function ServiceWorkerRegistrar() {
     });
   }, []);
 
-  if (!waitingSW) return null;
+  if (!updateAvailable) return null;
+
+  const handleRefresh = () => {
+    const waiting = regRef.current?.waiting;
+    if (!waiting) return;
+    waiting.postMessage("SKIP_WAITING");
+  };
 
   return (
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 whitespace-nowrap rounded-lg border-2 border-primary bg-background px-4 py-3 shadow-lg text-sm">
       <span>A new version is available.</span>
       <button
         className="font-semibold text-primary underline-offset-2 hover:underline"
-        onClick={() => waitingSW.postMessage("SKIP_WAITING")}
+        onClick={handleRefresh}
       >
         Refresh
       </button>
