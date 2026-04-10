@@ -57,16 +57,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     const auth = getAuthInstance();
-    // Capture the result (or error) from a redirect-based sign-in that
-    // just completed. The resolved user is also picked up by
-    // onAuthStateChanged, so we only need this for error handling.
-    getRedirectResult(auth).catch(() => {
-      // Redirect result errors (e.g. account-exists-with-different-credential)
-      // are silently swallowed here; onAuthStateChanged still fires with null.
-    });
+    // Wait for getRedirectResult to settle before clearing the loading
+    // state. onAuthStateChanged fires immediately with null (before the
+    // redirect credential is processed), which would flash the login page
+    // if we set loading=false on that first call.
+    let redirectSettled = false;
+    getRedirectResult(auth)
+      .then((result) => {
+        redirectSettled = true;
+        // If no redirect was pending, result is null and
+        // onAuthStateChanged already fired — clear loading now.
+        if (!result) setLoading(false);
+        // If result is non-null, onAuthStateChanged will fire next
+        // with the signed-in user and clear loading below.
+      })
+      .catch((err) => {
+        redirectSettled = true;
+        console.error("Google sign-in redirect failed:", err);
+        setLoading(false);
+      });
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
-      setLoading(false);
+      // Only clear loading here once the redirect check is done,
+      // or if we already have a signed-in user.
+      if (redirectSettled || user) setLoading(false);
     });
     return unsubscribe;
   }, []);
