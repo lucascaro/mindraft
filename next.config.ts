@@ -57,6 +57,18 @@ const nextConfig: NextConfig = {
   // Prevent firebase-admin (and its native Node.js modules) from being
   // bundled into client-side chunks. It must only run on the server.
   serverExternalPackages: ["firebase-admin"],
+
+  // In e2e mock mode, replace Firebase modules with in-memory mocks
+  // so Playwright tests run without a real Firebase project.
+  turbopack: process.env.NEXT_PUBLIC_E2E_MOCK === "true"
+    ? {
+        resolveAlias: {
+          "@/lib/firestore": "./src/lib/__e2e__/firestore.ts",
+          "@/lib/auth-context": "./src/lib/__e2e__/auth-context.tsx",
+          "@/lib/firebase": "./src/lib/__e2e__/firebase.ts",
+        },
+      }
+    : {},
 };
 
 export default nextConfig;
