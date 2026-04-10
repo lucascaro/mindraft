@@ -44,8 +44,12 @@ export function ServiceWorkerRegistrar() {
 
   const handleRefresh = () => {
     const waiting = regRef.current?.waiting;
-    if (!waiting) return;
-    waiting.postMessage("SKIP_WAITING");
+    if (waiting) {
+      waiting.postMessage("SKIP_WAITING");
+    } else {
+      // Waiting SW is gone (likely already activated); just reload
+      window.location.reload();
+    }
   };
 
   return (
