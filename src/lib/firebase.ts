@@ -48,3 +48,5 @@ export function getAuthInstance(): Auth {
 }
 
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.addScope('email');
+googleProvider.addScope('profile');
