@@ -184,7 +184,8 @@ export function IdeaCard({
                 <button
                   type="button"
                   aria-label={idea.refineNext ? "Remove from refinement queue" : "Mark for refinement"}
-                  className={`p-0.5 rounded transition-colors ${
+                  title={idea.refineNext ? "Remove from refinement queue" : "Mark for refinement"}
+                  className={`p-0.5 rounded transition-colors cursor-pointer ${
                     idea.refineNext
                       ? "text-orange-500 dark:text-orange-400"
                       : "text-muted-foreground/30 hover:text-muted-foreground/60"
@@ -215,6 +216,7 @@ export function IdeaCard({
                 size="icon"
                 className="h-8 w-8"
                 aria-label="Edit idea"
+                title="Edit idea"
                 onClick={(e) => {
                   e.stopPropagation();
                   setEditMode(true);
@@ -227,6 +229,7 @@ export function IdeaCard({
                 size="icon"
                 className="h-8 w-8"
                 aria-label="Close idea"
+                title="Close idea"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleClose();
@@ -246,6 +249,7 @@ export function IdeaCard({
                 size="icon"
                 className="h-8 w-8"
                 aria-label="Done editing"
+                title="Done editing"
                 onClick={(e) => {
                   e.stopPropagation();
                   setEditMode(false);
@@ -380,6 +384,7 @@ export function IdeaCard({
                   <Button
                     variant={idea.refineNext ? "default" : "outline"}
                     size="sm"
+                    title={idea.refineNext ? "Remove from refinement queue" : "Mark for refinement"}
                     className={`h-8 text-xs transition-colors duration-200 ${
                       idea.refineNext ? "bg-orange-500 hover:bg-orange-600 text-white border-orange-500" : ""
                     }`}

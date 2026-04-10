@@ -28,15 +28,19 @@ Element.prototype.releasePointerCapture = vi.fn();
 Element.prototype.hasPointerCapture = vi.fn().mockReturnValue(false);
 
 // Mock Firebase firestore operations
-vi.mock("@/lib/firestore", () => ({
-  updateIdea: vi.fn().mockResolvedValue(undefined),
-  deleteIdea: vi.fn().mockResolvedValue(undefined),
-  archiveIdea: vi.fn().mockResolvedValue(undefined),
-  restoreIdea: vi.fn().mockResolvedValue(undefined),
-  reorderIdeas: vi.fn().mockResolvedValue(undefined),
-  subscribeToTagColors: vi.fn().mockReturnValue(() => {}),
-  setTagColor: vi.fn().mockResolvedValue(undefined),
-}));
+vi.mock("@/lib/firestore", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/firestore")>();
+  return {
+    ...actual,
+    updateIdea: vi.fn().mockResolvedValue(undefined),
+    deleteIdea: vi.fn().mockResolvedValue(undefined),
+    archiveIdea: vi.fn().mockResolvedValue(undefined),
+    restoreIdea: vi.fn().mockResolvedValue(undefined),
+    reorderIdeas: vi.fn().mockResolvedValue(undefined),
+    subscribeToTagColors: vi.fn().mockReturnValue(() => {}),
+    setTagColor: vi.fn().mockResolvedValue(undefined),
+  };
+});
 
 // Mock react-markdown (ESM-only, problematic in jsdom)
 vi.mock("react-markdown", () => ({

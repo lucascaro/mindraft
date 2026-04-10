@@ -42,6 +42,7 @@ export function SortableIdeaCard({
             type="button"
             className="absolute left-1.5 top-0 bottom-0 z-10 flex items-center text-muted-foreground/40 hover:text-muted-foreground cursor-grab active:cursor-grabbing touch-none"
             aria-label="Drag to reorder"
+            title="Drag to reorder"
             {...attributes}
             {...listeners}
           >

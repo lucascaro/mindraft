@@ -29,12 +29,17 @@ function sortByCreatedAt(ideas: Idea[]) {
   });
 }
 
-function sortBySortOrder(ideas: Idea[]) {
+/** @internal exported for testing */
+export function sortBySortOrder(ideas: Idea[]) {
   return ideas.sort((a, b) => {
+    // Primary sort: refineNext items float to top
+    if (a.refineNext && !b.refineNext) return -1;
+    if (!a.refineNext && b.refineNext) return 1;
+    // Secondary sort: manual sortOrder
     const aOrder = a.sortOrder ?? Infinity;
     const bOrder = b.sortOrder ?? Infinity;
     if (aOrder !== bOrder) return aOrder - bOrder;
-    // Secondary sort: newest first for ideas with same/no sortOrder
+    // Tertiary sort: newest first for ideas with same/no sortOrder
     const aTime = a.createdAt?.toMillis?.() ?? 0;
     const bTime = b.createdAt?.toMillis?.() ?? 0;
     return bTime - aTime;
