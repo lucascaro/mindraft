@@ -40,6 +40,16 @@ const nextConfig: NextConfig = {
 
   async rewrites() {
     return [
+      // Proxy Firebase Auth handler requests to Firebase Hosting so that
+      // signInWithRedirect works on browsers that block third-party storage.
+      // Set NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN to your app's own host (e.g.
+      // mindraft-ten.vercel.app) so the SDK redirects through this proxy
+      // instead of cross-origin to firebaseapp.com.
+      // See: https://firebase.google.com/docs/auth/web/redirect-best-practices
+      {
+        source: "/__/:path*",
+        destination: `https://${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.firebaseapp.com/__/:path*`,
+      },
       // OAuth 2.0 well-known endpoints required by the MCP Authorization spec.
       // Next.js ignores directories prefixed with ".", so we serve these from
       // normal API routes and rewrite the canonical paths here.

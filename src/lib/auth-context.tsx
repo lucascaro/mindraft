@@ -57,19 +57,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     const auth = getAuthInstance();
-    // Wait for getRedirectResult to settle before clearing the loading
-    // state. onAuthStateChanged fires immediately with null (before the
-    // redirect credential is processed), which would flash the login page
-    // if we set loading=false on that first call.
     let redirectSettled = false;
     getRedirectResult(auth)
       .then((result) => {
         redirectSettled = true;
-        // If no redirect was pending, result is null and
-        // onAuthStateChanged already fired — clear loading now.
         if (!result) setLoading(false);
-        // If result is non-null, onAuthStateChanged will fire next
-        // with the signed-in user and clear loading below.
       })
       .catch((err) => {
         redirectSettled = true;
@@ -78,8 +70,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
-      // Only clear loading here once the redirect check is done,
-      // or if we already have a signed-in user.
       if (redirectSettled || user) setLoading(false);
     });
     return unsubscribe;
