@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { TagBadge } from "@/components/tag-badge";
-import { Archive, ArchiveRestore, Plus, Trash2, X } from "lucide-react";
+import { Archive, ArchiveRestore, Pencil, Plus, Trash2, X } from "lucide-react";
 import { updateIdea, deleteIdea, archiveIdea, restoreIdea } from "@/lib/firestore";
 import { Idea, IdeaStatus, IDEA_STATUSES } from "@/lib/types";
 import ReactMarkdown from "react-markdown";
@@ -38,6 +38,7 @@ export function IdeaCard({
   const [status, setStatus] = useState<IdeaStatus>(idea.status);
   const [tagInput, setTagInput] = useState("");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [editMode, setEditMode] = useState(false);
   const editRef = useRef<HTMLDivElement>(null);
   const [editHeight, setEditHeight] = useState(0);
   const wasExpanded = useRef(expanded);
@@ -63,6 +64,7 @@ export function IdeaCard({
       if (s !== idea.status) changes.status = s;
       if (Object.keys(changes).length > 0) save(changes);
       setConfirmingDelete(false);
+      setEditMode(false);
     }
     wasExpanded.current = expanded;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -80,18 +82,22 @@ export function IdeaCard({
     }
   }, [idea, expanded]);
 
-  // Cmd+Enter (or Ctrl+Enter) saves and closes the card.
+  // Cmd+Enter (or Ctrl+Enter): exit edit mode if editing, else close the card.
   useEffect(() => {
     if (!expanded) return;
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
         e.preventDefault();
-        onCollapse();
+        if (editMode) {
+          setEditMode(false);
+        } else {
+          onCollapse();
+        }
       }
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [expanded, onCollapse]);
+  }, [expanded, editMode, onCollapse]);
 
   const measure = useCallback(() => {
     if (editRef.current) {
@@ -101,7 +107,7 @@ export function IdeaCard({
 
   useEffect(() => {
     measure();
-  }, [expanded, tags, confirmingDelete, measure]);
+  }, [expanded, editMode, tags, confirmingDelete, measure]);
 
   const handleClose = () => {
     onCollapse();
@@ -154,13 +160,13 @@ export function IdeaCard({
               value={expanded ? title : idea.title}
               onChange={(e) => setTitle(e.target.value)}
               onBlur={() => {
-                if (expanded && title !== idea.title) save({ title });
+                if (expanded && editMode && title !== idea.title) save({ title });
               }}
-              readOnly={!expanded}
-              tabIndex={expanded ? 0 : -1}
+              readOnly={!expanded || !editMode}
+              tabIndex={expanded && editMode ? 0 : -1}
               aria-label="Idea title"
               className="w-full text-base font-semibold border-none shadow-none px-0 focus-visible:ring-0 h-auto py-0 cursor-inherit bg-transparent"
-              style={{ pointerEvents: expanded ? "auto" : "none" }}
+              style={{ pointerEvents: expanded && editMode ? "auto" : "none" }}
               onClick={(e) => {
                 if (expanded) e.stopPropagation();
               }}
@@ -182,11 +188,23 @@ export function IdeaCard({
               </Badge>
             </div>
 
-            {/* Close button — visible when expanded */}
+            {/* View mode buttons: Edit + Close — visible when expanded and not editing */}
             <div
               className="absolute right-0 flex gap-1 transition-opacity duration-200"
-              style={{ opacity: expanded ? 1 : 0, pointerEvents: expanded ? "auto" : "none" }}
+              style={{ opacity: expanded && !editMode ? 1 : 0, pointerEvents: expanded && !editMode ? "auto" : "none" }}
             >
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                aria-label="Edit idea"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditMode(true);
+                }}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"
@@ -195,6 +213,25 @@ export function IdeaCard({
                 onClick={(e) => {
                   e.stopPropagation();
                   handleClose();
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Edit mode buttons: Close — visible when expanded and editing */}
+            <div
+              className="absolute right-0 flex gap-1 transition-opacity duration-200"
+              style={{ opacity: expanded && editMode ? 1 : 0, pointerEvents: expanded && editMode ? "auto" : "none" }}
+            >
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                aria-label="Done editing"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditMode(false);
                 }}
               >
                 <X className="h-4 w-4" />
@@ -230,7 +267,7 @@ export function IdeaCard({
         </CardContent>
       </div>
 
-      {/* Edit area — expands when editing */}
+      {/* Expanded area — view or edit mode */}
       <div
         className="overflow-hidden transition-all duration-300 ease-in-out"
         style={{
@@ -240,144 +277,207 @@ export function IdeaCard({
       >
         <div ref={editRef}>
           <CardContent className="space-y-3 pt-0">
-            <div className="flex gap-1.5">
-              {IDEA_STATUSES.map((s) => (
-                <Button
-                  key={s.value}
-                  variant={status === s.value ? "default" : "outline"}
-                  size="sm"
-                  className="flex-1 h-8 text-xs transition-colors duration-200"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setStatus(s.value);
-                    save({ status: s.value });
-                  }}
-                >
-                  {s.label}
-                </Button>
-              ))}
-            </div>
+            {/* View mode content */}
+            {!editMode && (
+              <>
+                <div className="flex items-center gap-2">
+                  <Badge
+                    variant="outline"
+                    className={statusColors[idea.status] ?? ""}
+                  >
+                    {idea.status}
+                  </Badge>
+                </div>
 
-            <Textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              onBlur={() => {
-                if (body !== idea.body) save({ body });
-              }}
-              placeholder="Expand on your idea..."
-              aria-label="Idea body"
-              className="min-h-[100px] resize-y text-sm"
-              onClick={(e) => e.stopPropagation()}
-            />
+                {idea.body ? (
+                  <div className="prose prose-sm dark:prose-invert max-w-none text-sm [&_pre]:bg-muted [&_pre]:p-3 [&_pre]:rounded [&_code]:font-mono [&_code]:bg-muted [&_code]:px-1 [&_code]:rounded [&_blockquote]:border-l-4 [&_blockquote]:pl-3 [&_blockquote]:text-muted-foreground">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {idea.body}
+                    </ReactMarkdown>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">No description yet.</p>
+                )}
 
-            <div>
-              <div className="flex flex-wrap gap-2 mb-2">
-                {tags.map((tag) => (
-                  <TagBadge
-                    key={tag}
-                    tag={tag}
-                    editable
-                    onRemove={() => removeTag(tag)}
-                  />
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <Input
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && tagInput.trim()) {
-                      e.preventDefault();
-                      addTag();
-                    }
-                  }}
-                  placeholder="Add a tag"
-                  aria-label="New tag name"
-                  className="text-sm flex-1"
-                  onClick={(e) => e.stopPropagation()}
-                />
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="outline"
-                  aria-label="Add tag"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    addTag();
-                  }}
-                  disabled={!tagInput.trim()}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
+                {tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {tags.map((tag) => (
+                      <TagBadge key={tag} tag={tag} />
+                    ))}
+                  </div>
+                )}
 
-            <div className="pt-2 border-t flex justify-between items-center gap-2">
-              {mode === "active" ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    await archiveIdea(idea.id);
-                  }}
-                >
-                  <Archive className="h-4 w-4 mr-1" /> Archive
-                </Button>
-              ) : confirmingDelete ? (
-                <div className="flex gap-2 items-center w-full justify-between">
-                  <span className="text-sm text-muted-foreground">
-                    Delete permanently?
-                  </span>
-                  <div className="flex gap-2">
+                <div className="pt-2 border-t flex justify-between items-center gap-2">
+                  {mode === "active" ? (
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={(e) => {
+                      onClick={async (e) => {
                         e.stopPropagation();
-                        setConfirmingDelete(false);
+                        await archiveIdea(idea.id);
                       }}
                     >
-                      Cancel
+                      <Archive className="h-4 w-4 mr-1" /> Archive
                     </Button>
+                  ) : (
                     <Button
-                      variant="destructive"
+                      variant="ghost"
                       size="sm"
                       onClick={async (e) => {
                         e.stopPropagation();
-                        await deleteIdea(idea.id);
+                        await restoreIdea(idea.id);
                       }}
                     >
-                      Delete
+                      <ArchiveRestore className="h-4 w-4 mr-1" /> Restore
+                    </Button>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Edit mode content */}
+            {editMode && (
+              <>
+                <div className="flex gap-1.5">
+                  {IDEA_STATUSES.map((s) => (
+                    <Button
+                      key={s.value}
+                      variant={status === s.value ? "default" : "outline"}
+                      size="sm"
+                      className="flex-1 h-8 text-xs transition-colors duration-200"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setStatus(s.value);
+                        save({ status: s.value });
+                      }}
+                    >
+                      {s.label}
+                    </Button>
+                  ))}
+                </div>
+
+                <Textarea
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  onBlur={() => {
+                    if (body !== idea.body) save({ body });
+                  }}
+                  placeholder="Expand on your idea..."
+                  aria-label="Idea body"
+                  className="min-h-[100px] resize-y text-sm"
+                  onClick={(e) => e.stopPropagation()}
+                />
+
+                <div>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {tags.map((tag) => (
+                      <TagBadge
+                        key={tag}
+                        tag={tag}
+                        editable
+                        onRemove={() => removeTag(tag)}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && tagInput.trim()) {
+                          e.preventDefault();
+                          addTag();
+                        }
+                      }}
+                      placeholder="Add a tag"
+                      aria-label="New tag name"
+                      className="text-sm flex-1"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      aria-label="Add tag"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        addTag();
+                      }}
+                      disabled={!tagInput.trim()}
+                    >
+                      <Plus className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
-              ) : (
-                <div className="flex gap-2 w-full justify-between">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      await restoreIdea(idea.id);
-                    }}
-                  >
-                    <ArchiveRestore className="h-4 w-4 mr-1" /> Restore
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:text-destructive"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setConfirmingDelete(true);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" /> Delete
-                  </Button>
+
+                <div className="pt-2 border-t flex justify-between items-center gap-2">
+                  {mode === "active" ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        await archiveIdea(idea.id);
+                      }}
+                    >
+                      <Archive className="h-4 w-4 mr-1" /> Archive
+                    </Button>
+                  ) : confirmingDelete ? (
+                    <div className="flex gap-2 items-center w-full justify-between">
+                      <span className="text-sm text-muted-foreground">
+                        Delete permanently?
+                      </span>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConfirmingDelete(false);
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            await deleteIdea(idea.id);
+                          }}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2 w-full justify-between">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          await restoreIdea(idea.id);
+                        }}
+                      >
+                        <ArchiveRestore className="h-4 w-4 mr-1" /> Restore
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmingDelete(true);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" /> Delete
+                      </Button>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </>
+            )}
           </CardContent>
         </div>
       </div>
