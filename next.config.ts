@@ -1,4 +1,13 @@
 import type { NextConfig } from "next";
+import { execSync } from "child_process";
+
+function getBuildId(): string {
+  try {
+    return execSync("git rev-parse HEAD").toString().trim();
+  } catch {
+    return Date.now().toString();
+  }
+}
 
 // Non-CSP security headers. CSP itself is set per-request in `src/proxy.ts`
 // because nonce generation requires dynamic rendering.
@@ -17,6 +26,9 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  env: {
+    BUILD_ID: getBuildId(),
+  },
   async headers() {
     return [
       {

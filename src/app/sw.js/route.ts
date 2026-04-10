@@ -1,3 +1,6 @@
+export const dynamic = "force-static";
+
+const SW_CONTENT = `// BUILD_ID: ${process.env.BUILD_ID}
 const CACHE_NAME = "mindraft-v1";
 
 self.addEventListener("install", () => {
@@ -20,3 +23,14 @@ self.addEventListener("fetch", (event) => {
     fetch(event.request).catch(() => caches.match(event.request))
   );
 });
+`;
+
+export function GET() {
+  return new Response(SW_CONTENT, {
+    headers: {
+      "Content-Type": "application/javascript",
+      "Service-Worker-Allowed": "/",
+      "Cache-Control": "no-cache",
+    },
+  });
+}
