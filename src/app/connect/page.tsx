@@ -26,7 +26,7 @@ import { Lightbulb, Bot } from "lucide-react";
 
 type State =
   | { kind: "loading" }
-  | { kind: "ready"; user: User }
+  | { kind: "ready"; user: User; clientName: string | null }
   | { kind: "connecting" }
   | { kind: "done" }
   | { kind: "error"; message: string };
@@ -67,8 +67,15 @@ export default function ConnectPage() {
         return;
       }
 
+      // Fetch client name from the server — don't trust URL params, they're forgeable.
+      let clientName: string | null = null;
+      try {
+        const info = await fetch(`/api/oauth/session-info?session=${encodeURIComponent(session)}`);
+        if (info.ok) clientName = (await info.json()).clientName ?? null;
+      } catch { /* non-fatal — we'll show a generic label */ }
+
       // Signed in — show the confirmation button. Don't connect yet.
-      setState({ kind: "ready", user });
+      setState({ kind: "ready", user, clientName });
     });
 
     return unsubscribe;
@@ -113,6 +120,12 @@ export default function ConnectPage() {
             </p>
           ) : state.kind === "ready" ? (
             <>
+              <p className="text-sm text-center text-muted-foreground">
+                <span className="font-medium text-foreground">
+                  {state.clientName ?? "An AI agent"}
+                </span>{" "}
+                is requesting access to your ideas.
+              </p>
               <p className="text-sm text-center text-muted-foreground">
                 Signed in as <span className="font-medium text-foreground">{state.user.email}</span>
               </p>

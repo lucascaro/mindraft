@@ -28,8 +28,9 @@ export async function POST(req: Request) {
   const redirectUris = Array.isArray(body.redirect_uris)
     ? (body.redirect_uris as unknown[]).filter((u): u is string => typeof u === "string")
     : [];
+  const clientName = typeof body.client_name === "string" ? body.client_name : undefined;
 
-  const clientId = signClientId(redirectUris);
+  const clientId = signClientId({ redirectUris, clientName });
 
   return Response.json(
     { ...body, client_id: clientId },

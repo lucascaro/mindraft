@@ -21,6 +21,7 @@ interface PkceEntry {
   challenge: string;
   redirectUri: string;
   state: string;
+  clientName: string | undefined;
   expiresAt: number;
 }
 
@@ -48,7 +49,7 @@ function purgeExpired<T extends { expiresAt: number }>(map: Map<string, T>) {
 }
 
 export const pkce = {
-  set(sessionId: string, challenge: string, redirectUri: string, state: string) {
+  set(sessionId: string, challenge: string, redirectUri: string, state: string, clientName?: string) {
     purgeExpired(pkceStore);
     if (pkceStore.size >= MAX_PKCE_ENTRIES) {
       throw new Error("Too many pending sessions");
@@ -57,6 +58,7 @@ export const pkce = {
       challenge,
       redirectUri,
       state,
+      clientName,
       expiresAt: Date.now() + SESSION_TTL_MS,
     });
   },

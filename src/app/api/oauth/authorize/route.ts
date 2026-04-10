@@ -83,9 +83,9 @@ export async function GET(req: Request) {
   }
   // Check redirect_uri against the client's registered URIs (encoded in the
   // client_id JWT) first, then fall back to the static allowlist.
-  const registeredUris = verifyClientId(clientId);
-  const isAllowed = registeredUris
-    ? registeredUris.includes(redirectUri)
+  const clientInfo = verifyClientId(clientId);
+  const isAllowed = clientInfo
+    ? clientInfo.redirectUris.includes(redirectUri)
     : isAllowedRedirectUri(redirectUri);
 
   if (!isAllowed) {
@@ -97,7 +97,7 @@ export async function GET(req: Request) {
 
   const sessionId = randomToken();
   try {
-    pkce.set(sessionId, challenge, redirectUri, state);
+    pkce.set(sessionId, challenge, redirectUri, state, clientInfo?.clientName);
   } catch {
     return Response.json(
       { error: "server_error", error_description: "Too many pending sessions. Try again later." },
