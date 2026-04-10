@@ -290,7 +290,7 @@ export function IdeaCard({
                 </div>
 
                 {idea.body ? (
-                  <div className="prose prose-sm dark:prose-invert max-w-none text-sm [&_pre]:bg-muted [&_pre]:p-3 [&_pre]:rounded [&_code]:font-mono [&_code]:bg-muted [&_code]:px-1 [&_code]:rounded [&_blockquote]:border-l-4 [&_blockquote]:pl-3 [&_blockquote]:text-muted-foreground">
+                  <div className="markdown-body">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {idea.body}
                     </ReactMarkdown>
