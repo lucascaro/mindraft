@@ -19,7 +19,7 @@ import {
   terminate,
   clearIndexedDbPersistence,
 } from "firebase/firestore";
-import { getAuthInstance, getDb, googleProvider } from "./firebase";
+import { getAuthInstance, getDb, googleProvider, isFirebaseConfigured } from "./firebase";
 import { deleteAllUserIdeas } from "./firestore";
 
 type AuthContextType = {
@@ -51,6 +51,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!isFirebaseConfigured) {
+      setLoading(false);
+      return;
+    }
     const unsubscribe = onAuthStateChanged(getAuthInstance(), (user) => {
       setUser(user);
       setLoading(false);
