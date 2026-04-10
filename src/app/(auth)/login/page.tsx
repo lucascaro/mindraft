@@ -6,12 +6,12 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Lightbulb, Zap, PencilLine, Smartphone } from "lucide-react";
+import { Lightbulb, Zap, Sparkles, LayoutList } from "lucide-react";
 
 const features = [
-  { icon: Zap, text: "Capture in a tap" },
-  { icon: PencilLine, text: "Refine when ready" },
-  { icon: Smartphone, text: "Works offline, anywhere" },
+  { icon: Zap, text: "Works where you work — connect via MCP to Claude Code, Cursor, Windsurf, or any MCP-compatible client" },
+  { icon: Sparkles, text: "Refine with AI — ask your AI to push ideas further, find gaps, and rank them by potential" },
+  { icon: LayoutList, text: "Track what matters — raw → in-progress → developed" },
 ];
 
 export default function LoginPage() {
@@ -43,10 +43,10 @@ export default function LoginPage() {
             Mindraft
           </div>
           <CardTitle className="text-3xl font-semibold tracking-tight">
-            Ideas, before they escape.
+            Develop ideas inside your AI tools.
           </CardTitle>
           <CardDescription className="text-base mt-2">
-            Quick-capture now, refine when you&apos;re back at your desk.
+            Mindraft connects to your AI environment via MCP. Capture, refine, and track ideas without switching context.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
@@ -68,7 +68,7 @@ export default function LoginPage() {
             ))}
           </ul>
           <p className="text-xs text-muted-foreground text-center">
-            Free. No ads. Yours alone.{" "}
+            Free to start. No ads. Built for developers.{" "}
             <Link
               href="/privacy"
               className="underline underline-offset-4 hover:text-foreground"
