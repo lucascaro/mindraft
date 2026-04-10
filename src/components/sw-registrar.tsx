@@ -17,6 +17,7 @@ import { useCallback, useEffect, useState } from "react";
 //     from triggering an unnecessary reload on brand-new visitors.
 export function ServiceWorkerRegistrar() {
   const [updateReady, setUpdateReady] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
@@ -101,6 +102,7 @@ export function ServiceWorkerRegistrar() {
   }, []);
 
   const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
     try {
       const reg = await navigator.serviceWorker.getRegistration();
       if (reg?.waiting) {
@@ -119,13 +121,20 @@ export function ServiceWorkerRegistrar() {
 
   return (
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 whitespace-nowrap rounded-lg border-2 border-primary bg-background px-4 py-3 shadow-lg text-sm">
-      <span>A new version is available.</span>
+      <span>{refreshing ? "Updating…" : "A new version is available."}</span>
       <button
         type="button"
-        className="font-semibold text-primary underline-offset-2 hover:underline"
+        className="inline-flex items-center gap-1.5 font-semibold text-primary underline-offset-2 hover:underline disabled:opacity-50 disabled:no-underline"
         onClick={handleRefresh}
+        disabled={refreshing}
       >
-        Refresh
+        {refreshing && (
+          <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="2.5" opacity="0.25" />
+            <path d="M14.5 8a6.5 6.5 0 0 0-6.5-6.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+          </svg>
+        )}
+        {refreshing ? "Refreshing" : "Refresh"}
       </button>
     </div>
   );
