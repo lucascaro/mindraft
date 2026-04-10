@@ -4,6 +4,8 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
 import { IdeaCard } from "./idea-card";
+import { SwipeToArchive } from "./swipe-to-archive";
+import { archiveIdea } from "@/lib/firestore";
 import { Idea } from "@/lib/types";
 
 export function SortableIdeaCard({
@@ -47,12 +49,17 @@ export function SortableIdeaCard({
           </button>
         )}
         <div className="flex-1 min-w-0">
-          <IdeaCard
-            idea={idea}
-            expanded={expanded}
-            onExpand={onExpand}
-            onCollapse={onCollapse}
-          />
+          <SwipeToArchive
+            enabled={!expanded}
+            onArchive={() => archiveIdea(idea.id)}
+          >
+            <IdeaCard
+              idea={idea}
+              expanded={expanded}
+              onExpand={onExpand}
+              onCollapse={onCollapse}
+            />
+          </SwipeToArchive>
         </div>
       </div>
     </li>

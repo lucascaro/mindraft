@@ -16,7 +16,8 @@ import {
 } from "@dnd-kit/sortable";
 import { IdeaCard } from "./idea-card";
 import { SortableIdeaCard } from "./sortable-idea-card";
-import { reorderIdeas } from "@/lib/firestore";
+import { SwipeToArchive } from "./swipe-to-archive";
+import { reorderIdeas, archiveIdea } from "@/lib/firestore";
 import { Idea } from "@/lib/types";
 
 export function SortableIdeaList({
@@ -73,12 +74,17 @@ export function SortableIdeaList({
       >
         {ideas.map((idea) => (
           <li key={idea.id}>
-            <IdeaCard
-              idea={idea}
-              expanded={expandedId === idea.id}
-              onExpand={() => onExpand(idea.id)}
-              onCollapse={onCollapse}
-            />
+            <SwipeToArchive
+              enabled={expandedId !== idea.id}
+              onArchive={() => archiveIdea(idea.id)}
+            >
+              <IdeaCard
+                idea={idea}
+                expanded={expandedId === idea.id}
+                onExpand={() => onExpand(idea.id)}
+                onCollapse={onCollapse}
+              />
+            </SwipeToArchive>
           </li>
         ))}
       </ul>
