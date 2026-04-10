@@ -36,11 +36,11 @@ export function SortableIdeaCard({
 
   return (
     <li ref={setNodeRef} style={style}>
-      <div style={{ display: "flex", alignItems: "stretch" }}>
+      <div className="relative">
         {!expanded && (
           <button
             type="button"
-            className="flex items-center px-1 text-muted-foreground/40 hover:text-muted-foreground cursor-grab active:cursor-grabbing touch-none"
+            className="absolute left-1.5 top-0 bottom-0 z-10 flex items-center text-muted-foreground/40 hover:text-muted-foreground cursor-grab active:cursor-grabbing touch-none"
             aria-label="Drag to reorder"
             {...attributes}
             {...listeners}
@@ -48,19 +48,17 @@ export function SortableIdeaCard({
             <GripVertical className="h-4 w-4" />
           </button>
         )}
-        <div className="flex-1 min-w-0">
-          <SwipeToArchive
-            enabled={!expanded}
-            onArchive={() => archiveIdea(idea.id)}
-          >
-            <IdeaCard
-              idea={idea}
-              expanded={expanded}
-              onExpand={onExpand}
-              onCollapse={onCollapse}
-            />
-          </SwipeToArchive>
-        </div>
+        <SwipeToArchive
+          enabled={!expanded}
+          onArchive={() => archiveIdea(idea.id)}
+        >
+          <IdeaCard
+            idea={idea}
+            expanded={expanded}
+            onExpand={onExpand}
+            onCollapse={onCollapse}
+          />
+        </SwipeToArchive>
       </div>
     </li>
   );
