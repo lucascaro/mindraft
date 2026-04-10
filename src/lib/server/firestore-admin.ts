@@ -29,6 +29,7 @@ export interface SerializedIdea {
   archived?: boolean;
   archivedAt?: string;
   sortOrder?: number;
+  refineNext?: boolean;
 }
 
 // Lightweight summary — no body — for list operations.
@@ -47,6 +48,7 @@ function serialize(id: string, data: FirebaseFirestore.DocumentData): Serialized
     ...(data.archived ? { archived: true } : {}),
     ...(data.archivedAt ? { archivedAt: data.archivedAt.toDate().toISOString() } : {}),
     ...(data.sortOrder != null ? { sortOrder: data.sortOrder } : {}),
+    ...(data.refineNext ? { refineNext: true } : {}),
   };
 }
 
@@ -55,6 +57,7 @@ export interface ListIdeasOptions {
   tag?: string;
   search?: string;
   limit?: number;
+  refineNext?: boolean;
 }
 
 export async function listIdeas(userId: string, opts: ListIdeasOptions = {}): Promise<IdeaSummary[]> {
@@ -82,6 +85,12 @@ export async function listIdeas(userId: string, opts: ListIdeasOptions = {}): Pr
       return summary;
     })
     .filter((i) => !i.archived);
+
+  if (opts.refineNext) {
+    results = results.filter((i) => i.refineNext);
+    // Sort by sortOrder so the first result is the "next" idea to refine
+    results.sort((a, b) => (a.sortOrder ?? Infinity) - (b.sortOrder ?? Infinity));
+  }
 
   if (opts.search) {
     const sq = opts.search.toLowerCase();
@@ -144,6 +153,7 @@ export interface UpdateIdeaData {
   body?: string;
   tags?: string[];
   status?: IdeaStatus;
+  refineNext?: boolean;
 }
 
 export async function updateIdea(

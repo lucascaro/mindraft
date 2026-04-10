@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { TagBadge } from "@/components/tag-badge";
-import { Archive, ArchiveRestore, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Archive, ArchiveRestore, Crosshair, Pencil, Plus, Trash2, X } from "lucide-react";
 import { updateIdea, deleteIdea, archiveIdea, restoreIdea } from "@/lib/firestore";
 import { Idea, IdeaStatus, IDEA_STATUSES } from "@/lib/types";
 import ReactMarkdown from "react-markdown";
@@ -174,12 +174,29 @@ export function IdeaCard({
           </div>
 
           {/* Right side: fixed width so title has stable width across cards */}
-          <div className="relative shrink-0 w-[96px] h-8 flex items-center justify-end">
-            {/* Status badge — visible when collapsed */}
+          <div className="relative shrink-0 w-[120px] h-8 flex items-center justify-end">
+            {/* Status badge + refine toggle — visible when collapsed */}
             <div
-              className="absolute right-0 transition-opacity duration-200"
+              className="absolute right-0 flex items-center gap-1 transition-opacity duration-200"
               style={{ opacity: expanded ? 0 : 1, pointerEvents: expanded ? "none" : "auto" }}
             >
+              {mode === "active" && (
+                <button
+                  type="button"
+                  aria-label={idea.refineNext ? "Remove from refinement queue" : "Mark for refinement"}
+                  className={`p-0.5 rounded transition-colors ${
+                    idea.refineNext
+                      ? "text-orange-500 dark:text-orange-400"
+                      : "text-muted-foreground/30 hover:text-muted-foreground/60"
+                  }`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    updateIdea(idea.id, { refineNext: !idea.refineNext });
+                  }}
+                >
+                  <Crosshair className="h-4 w-4" />
+                </button>
+              )}
               <Badge
                 variant="outline"
                 className={statusColors[idea.status] ?? ""}
@@ -287,6 +304,12 @@ export function IdeaCard({
                   >
                     {idea.status}
                   </Badge>
+                  {idea.refineNext && (
+                    <Badge variant="outline" className="bg-orange-50 text-orange-600 border-orange-200 dark:bg-orange-950 dark:text-orange-400 dark:border-orange-800">
+                      <Crosshair className="h-3 w-3 mr-1" />
+                      refine next
+                    </Badge>
+                  )}
                 </div>
 
                 {idea.body ? (
@@ -354,6 +377,20 @@ export function IdeaCard({
                       {s.label}
                     </Button>
                   ))}
+                  <Button
+                    variant={idea.refineNext ? "default" : "outline"}
+                    size="sm"
+                    className={`h-8 text-xs transition-colors duration-200 ${
+                      idea.refineNext ? "bg-orange-500 hover:bg-orange-600 text-white border-orange-500" : ""
+                    }`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      save({ refineNext: !idea.refineNext });
+                    }}
+                  >
+                    <Crosshair className="h-3.5 w-3.5 mr-1" />
+                    Refine
+                  </Button>
                 </div>
 
                 <Textarea

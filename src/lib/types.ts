@@ -20,4 +20,5 @@ export type Idea = {
   archived?: boolean;
   archivedAt?: Timestamp;
   sortOrder?: number;
+  refineNext?: boolean;
 };

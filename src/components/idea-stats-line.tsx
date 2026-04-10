@@ -15,6 +15,8 @@ export function IdeaStatsLine({ ideas }: Props) {
     return acc;
   }, {});
 
+  const refineCount = ideas.filter((i) => i.refineNext).length;
+
   return (
     <p className="text-xs text-muted-foreground my-1">
       {total} idea{total !== 1 ? "s" : ""}
@@ -24,6 +26,12 @@ export function IdeaStatsLine({ ideas }: Props) {
           {counts[value] ?? 0} {label.toLowerCase()}
         </span>
       ))}
+      {refineCount > 0 && (
+        <span className="text-orange-500 dark:text-orange-400">
+          {" · "}
+          {refineCount} queued
+        </span>
+      )}
     </p>
   );
 }

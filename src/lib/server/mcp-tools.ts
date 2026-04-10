@@ -36,18 +36,20 @@ export function registerMcpTools(server: McpServer, userId: string) {
   // ── list_ideas ────────────────────────────────────────────────────────────
   server.tool(
     "list_ideas",
-    "List active (non-archived) ideas. Returns summaries without body text. Use get_idea to fetch the full body.",
+    "List active (non-archived) ideas. Returns summaries without body text. Use get_idea to fetch the full body. Use refineNext: true with limit: 1 to get the next idea queued for refinement.",
     {
       status: z.enum(STATUS_VALUES).optional().describe("Filter by status: raw, in-progress, or developed"),
       tag: z.string().optional().describe("Filter by tag (exact match)"),
       search: z.string().optional().describe("Filter by keyword in title (case-insensitive)"),
+      refineNext: z.boolean().optional().describe("Filter to ideas marked for refinement. Use with limit: 1 to get the next idea to refine."),
       limit: z.number().int().min(1).max(200).optional().describe("Max results to return (default: 50)"),
     },
-    async ({ status, tag, search, limit }) => {
+    async ({ status, tag, search, refineNext, limit }) => {
       const ideas = await listIdeas(userId, {
         status: status as IdeaStatus | undefined,
         tag,
         search,
+        refineNext,
         limit,
       });
       return ok(ideas);
@@ -106,16 +108,18 @@ export function registerMcpTools(server: McpServer, userId: string) {
       body: z.string().max(50000).optional().describe("New body (Markdown)"),
       tags: z.array(z.string().max(100)).max(30).optional().describe("Replace all tags with this array"),
       status: z.enum(STATUS_VALUES).optional().describe("New status: raw, in-progress, or developed"),
+      refineNext: z.boolean().optional().describe("Mark idea for refinement (true) or remove from refinement queue (false)"),
     },
-    async ({ id, title, body, tags, status }) => {
-      if (!title && body === undefined && !tags && !status) {
-        return err("Provide at least one field to update: title, body, tags, or status");
+    async ({ id, title, body, tags, status, refineNext }) => {
+      if (!title && body === undefined && !tags && !status && refineNext === undefined) {
+        return err("Provide at least one field to update: title, body, tags, status, or refineNext");
       }
       const updated = await updateIdea(userId, id, {
         ...(title !== undefined ? { title } : {}),
         ...(body !== undefined ? { body } : {}),
         ...(tags !== undefined ? { tags } : {}),
         ...(status !== undefined ? { status: status as IdeaStatus } : {}),
+        ...(refineNext !== undefined ? { refineNext } : {}),
       });
       if (!updated) return err(`Idea '${id}' not found`);
       return ok({ id, message: "Idea updated" });
