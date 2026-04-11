@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:staging": "set -a && . ./.env.dev && set +a && next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -24,6 +25,7 @@
     "clsx": "^2.1.1",
     "firebase": "^12.11.0",
     "firebase-admin": "13.8.0",
+    "hash-wasm": "4.12.0",
     "jsonwebtoken": "9.0.3",
     "lucide-react": "^1.7.0",
     "next": "16.2.3",
