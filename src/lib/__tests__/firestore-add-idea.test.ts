@@ -21,7 +21,7 @@ describe("addIdea", () => {
     addDocMock.mockClear();
   });
 
-  it("should not include 'archived' in the created document (firestore rules forbid it)", async () => {
+  it("should not include 'archived' or 'sortOrder' in the created document", async () => {
     await addIdea("user-1", "My Idea", "Some body");
 
     expect(addDocMock).toHaveBeenCalledOnce();
@@ -29,6 +29,8 @@ describe("addIdea", () => {
 
     expect(payload).not.toHaveProperty("archived");
     expect(payload).not.toHaveProperty("archivedAt");
+    // sortOrder must be absent so new ideas land in the "new/unordered" sort tier
+    expect(payload).not.toHaveProperty("sortOrder");
   });
 
   it("should include all required fields for firestore rules validCreate()", async () => {
@@ -42,7 +44,6 @@ describe("addIdea", () => {
       body: "Body",
       tags: [],
       status: "raw",
-      sortOrder: 0,
       createdAt: "SERVER_TS",
       updatedAt: "SERVER_TS",
     });

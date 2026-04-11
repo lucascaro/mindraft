@@ -30,12 +30,32 @@ function sortByCreatedAt(ideas: Idea[]) {
 }
 
 /** @internal exported for testing */
+/**
+ * Tier for three-tier sort:
+ *  0 = refinement queue (refineNext === true)
+ *  1 = new / unordered  (sortOrder is undefined)
+ *  2 = manually ordered  (sortOrder is defined, not refineNext)
+ */
+function sortTier(idea: Idea): number {
+  if (idea.refineNext) return 0;
+  if (idea.sortOrder == null) return 1;
+  return 2;
+}
+
 export function sortBySortOrder(ideas: Idea[]) {
   return ideas.sort((a, b) => {
-    const aOrder = a.sortOrder ?? Infinity;
-    const bOrder = b.sortOrder ?? Infinity;
-    if (aOrder !== bOrder) return aOrder - bOrder;
-    // Secondary sort: newest first for ideas with same/no sortOrder
+    const aTier = sortTier(a);
+    const bTier = sortTier(b);
+    if (aTier !== bTier) return aTier - bTier;
+
+    // Within refinement and ordered tiers: sort by sortOrder ascending
+    if (aTier !== 1) {
+      const aOrder = a.sortOrder ?? 0;
+      const bOrder = b.sortOrder ?? 0;
+      if (aOrder !== bOrder) return aOrder - bOrder;
+    }
+
+    // Within new tier (or same sortOrder): newest first
     const aTime = a.createdAt?.toMillis?.() ?? 0;
     const bTime = b.createdAt?.toMillis?.() ?? 0;
     return bTime - aTime;
@@ -84,7 +104,6 @@ export async function addIdea(
     body,
     tags: [],
     status: "raw",
-    sortOrder: 0,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     userId,

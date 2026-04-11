@@ -108,18 +108,17 @@ test.describe("Ideas page", () => {
     await createIdea(page, "Beta");
     await createIdea(page, "Gamma");
 
-    // Default order: Alpha, Beta, Gamma (insertion order, all sortOrder=0)
+    // Default order: newest first (all in "new" tier, no sortOrder)
     const cards = page.locator("ul > li [role='button'][aria-expanded]");
     await expect(cards).toHaveCount(3);
-    await expect(cards.first()).toHaveAttribute("aria-label", "Alpha");
-    await expect(cards.last()).toHaveAttribute("aria-label", "Gamma");
 
-    // Click "Mark for refinement" on Gamma (the last card)
-    const refineBtn = page.getByLabel("Mark for refinement").last();
+    // Click "Mark for refinement" on Alpha (should move to top regardless of position)
+    const alphaCard = page.getByRole("button", { name: "Alpha" });
+    const refineBtn = alphaCard.locator("..").getByLabel("Mark for refinement");
     await refineBtn.click();
 
-    // Gamma should now be first — its sortOrder changed to -1
-    await expect(cards.first()).toHaveAttribute("aria-label", "Gamma");
+    // Alpha should now be first — moved to refinement queue
+    await expect(cards.first()).toHaveAttribute("aria-label", "Alpha");
   });
 
   test("new ideas sort between refinement queue and reordered items", async ({
@@ -177,15 +176,70 @@ test.describe("Ideas page", () => {
     const cards = page.locator("ul > li [role='button'][aria-expanded]");
     await expect(cards).toHaveCount(3);
 
-    // Add a new idea (gets sortOrder: 0)
+    // Add a new idea (no sortOrder → "new" tier, between refine and ordered)
     await createIdea(page, "Brand New");
     await expect(cards).toHaveCount(4);
 
-    // Expected order: Refine Me (-1), Brand New (0), Ordered First (1), Ordered Second (2)
+    // Expected order: Refine Me (refineNext), Brand New (new tier), Ordered First (1), Ordered Second (2)
     await expect(cards.nth(0)).toHaveAttribute("aria-label", "Refine Me");
     await expect(cards.nth(1)).toHaveAttribute("aria-label", "Brand New");
     await expect(cards.nth(2)).toHaveAttribute("aria-label", "Ordered First");
     await expect(cards.nth(3)).toHaveAttribute("aria-label", "Ordered Second");
+  });
+
+  test("new ideas sort after refinement queue even with legacy sortOrder:0 items", async ({
+    page,
+  }) => {
+    // Seed with a legacy item (sortOrder: 0 from before the fix)
+    await page.evaluate(() => {
+      const store = (window as Record<string, unknown>).__e2eMockStore as {
+        seedIdeas: (ideas: unknown[]) => void;
+      };
+      const ts = {
+        seconds: Math.floor(Date.now() / 1000),
+        nanoseconds: 0,
+        toDate: () => new Date(),
+        toMillis: () => Date.now(),
+      };
+      store.seedIdeas([
+        {
+          id: "r1",
+          title: "Refine Me",
+          body: "",
+          tags: [],
+          status: "raw",
+          refineNext: true,
+          sortOrder: -1,
+          createdAt: ts,
+          updatedAt: ts,
+          userId: "e2e-test-user",
+        },
+        {
+          id: "legacy",
+          title: "Legacy Item",
+          body: "",
+          tags: [],
+          status: "raw",
+          sortOrder: 0,
+          createdAt: ts,
+          updatedAt: ts,
+          userId: "e2e-test-user",
+        },
+      ]);
+    });
+
+    const cards = page.locator("ul > li [role='button'][aria-expanded]");
+    await expect(cards).toHaveCount(2);
+
+    // Add a new idea (no sortOrder → new tier)
+    await createIdea(page, "Fresh Idea");
+    await expect(cards).toHaveCount(3);
+
+    // Legacy sortOrder:0 is "ordered" tier, new idea is "new" tier
+    // Expected: Refine Me, Fresh Idea, Legacy Item
+    await expect(cards.nth(0)).toHaveAttribute("aria-label", "Refine Me");
+    await expect(cards.nth(1)).toHaveAttribute("aria-label", "Fresh Idea");
+    await expect(cards.nth(2)).toHaveAttribute("aria-label", "Legacy Item");
   });
 });
 

@@ -52,7 +52,10 @@ export function SortableIdeaList({
     const [moved] = reordered.splice(oldIndex, 1);
     reordered.splice(newIndex, 0, moved);
 
-    const updates = reordered.map((idea, index) => ({
+    // Only assign sortOrder to non-refineNext items so we don't
+    // destroy their -1 sortOrder when the user reorders.
+    const nonRefine = reordered.filter((i) => !i.refineNext);
+    const updates = nonRefine.map((idea, index) => ({
       id: idea.id,
       sortOrder: index + 1,
     }));

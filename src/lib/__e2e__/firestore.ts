@@ -29,13 +29,31 @@ type TagColorListener = (overrides: Record<string, string>) => void;
 const ideaListeners = new Set<{ userId: string; filter: string; cb: IdeaListener }>();
 const tagColorListeners = new Set<{ userId: string; cb: TagColorListener }>();
 
+function mockSortTier(idea: Idea): number {
+  if (idea.refineNext) return 0;
+  if (idea.sortOrder == null) return 1;
+  return 2;
+}
+
 function notifyIdeaListeners() {
   for (const { userId, filter, cb } of ideaListeners) {
     const userIdeas = ideas.filter((i) => i.userId === userId);
     if (filter === "active") {
       const active = userIdeas
         .filter((i) => !i.archived)
-        .sort((a, b) => (a.sortOrder ?? Infinity) - (b.sortOrder ?? Infinity));
+        .sort((a, b) => {
+          const aTier = mockSortTier(a);
+          const bTier = mockSortTier(b);
+          if (aTier !== bTier) return aTier - bTier;
+          if (aTier !== 1) {
+            const aOrder = a.sortOrder ?? 0;
+            const bOrder = b.sortOrder ?? 0;
+            if (aOrder !== bOrder) return aOrder - bOrder;
+          }
+          const aTime = a.createdAt?.toMillis?.() ?? 0;
+          const bTime = b.createdAt?.toMillis?.() ?? 0;
+          return bTime - aTime;
+        });
       cb(active);
     } else {
       const archived = userIdeas.filter((i) => i.archived === true);
@@ -68,7 +86,19 @@ export function subscribeToIdeas(
     callback(
       userIdeas
         .filter((i) => !i.archived)
-        .sort((a, b) => (a.sortOrder ?? Infinity) - (b.sortOrder ?? Infinity))
+        .sort((a, b) => {
+          const aTier = mockSortTier(a);
+          const bTier = mockSortTier(b);
+          if (aTier !== bTier) return aTier - bTier;
+          if (aTier !== 1) {
+            const aOrder = a.sortOrder ?? 0;
+            const bOrder = b.sortOrder ?? 0;
+            if (aOrder !== bOrder) return aOrder - bOrder;
+          }
+          const aTime = a.createdAt?.toMillis?.() ?? 0;
+          const bTime = b.createdAt?.toMillis?.() ?? 0;
+          return bTime - aTime;
+        })
     );
   } else {
     callback(userIdeas.filter((i) => i.archived === true));
@@ -87,8 +117,6 @@ export async function addIdea(userId: string, title: string, body = "") {
     body,
     tags: [],
     status: "raw" as IdeaStatus,
-    archived: false,
-    sortOrder: 0,
     createdAt: now as Idea["createdAt"],
     updatedAt: now as Idea["updatedAt"],
     userId,
