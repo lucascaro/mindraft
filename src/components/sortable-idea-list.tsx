@@ -54,7 +54,7 @@ export function SortableIdeaList({
 
     const updates = reordered.map((idea, index) => ({
       id: idea.id,
-      sortOrder: index,
+      sortOrder: index + 1,
     }));
 
     await reorderIdeas(updates);

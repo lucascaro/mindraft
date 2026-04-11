@@ -121,6 +121,72 @@ test.describe("Ideas page", () => {
     // Gamma should now be first — its sortOrder changed to -1
     await expect(cards.first()).toHaveAttribute("aria-label", "Gamma");
   });
+
+  test("new ideas sort between refinement queue and reordered items", async ({
+    page,
+  }) => {
+    // Seed ideas with explicit sortOrder to simulate a reordered list
+    await page.evaluate(() => {
+      const store = (window as Record<string, unknown>).__e2eMockStore as {
+        seedIdeas: (ideas: unknown[]) => void;
+      };
+      const ts = {
+        seconds: Math.floor(Date.now() / 1000),
+        nanoseconds: 0,
+        toDate: () => new Date(),
+        toMillis: () => Date.now(),
+      };
+      store.seedIdeas([
+        {
+          id: "r1",
+          title: "Refine Me",
+          body: "",
+          tags: [],
+          status: "raw",
+          refineNext: true,
+          sortOrder: -1,
+          createdAt: ts,
+          updatedAt: ts,
+          userId: "e2e-test-user",
+        },
+        {
+          id: "o1",
+          title: "Ordered First",
+          body: "",
+          tags: [],
+          status: "raw",
+          sortOrder: 1,
+          createdAt: ts,
+          updatedAt: ts,
+          userId: "e2e-test-user",
+        },
+        {
+          id: "o2",
+          title: "Ordered Second",
+          body: "",
+          tags: [],
+          status: "raw",
+          sortOrder: 2,
+          createdAt: ts,
+          updatedAt: ts,
+          userId: "e2e-test-user",
+        },
+      ]);
+    });
+
+    const cards = page.locator("ul > li [role='button'][aria-expanded]");
+    await expect(cards).toHaveCount(3);
+
+    // Add a new idea (gets sortOrder: 0)
+    await createIdea(page, "Brand New");
+    await expect(cards).toHaveCount(4);
+
+    // Expected order: Refine Me (-1), Brand New (0), Ordered First (1), Ordered Second (2)
+    await expect(cards.nth(0)).toHaveAttribute("aria-label", "Refine Me");
+    await expect(cards.nth(1)).toHaveAttribute("aria-label", "Brand New");
+    await expect(cards.nth(2)).toHaveAttribute("aria-label", "Ordered First");
+    await expect(cards.nth(3)).toHaveAttribute("aria-label", "Ordered Second");
+  });
 });
 
 test.describe("Swipe to archive", () => {
