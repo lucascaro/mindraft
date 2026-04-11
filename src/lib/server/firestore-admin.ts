@@ -140,7 +140,6 @@ export async function createIdea(
     body,
     tags,
     status: "raw" as IdeaStatus,
-    archived: false,
     sortOrder: 0,
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
