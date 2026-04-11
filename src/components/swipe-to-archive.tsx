@@ -200,7 +200,7 @@ export function SwipeToArchive({
   return (
     <div
       ref={containerRef}
-      className="relative overflow-hidden rounded-xl"
+      className="relative overflow-hidden rounded-lg"
       style={{ touchAction: "pan-y" }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -211,7 +211,7 @@ export function SwipeToArchive({
       {/* Background: archive indicator */}
       <div
         ref={bgRef}
-        className="absolute inset-0 flex items-center pl-5 rounded-xl"
+        className="absolute inset-0 flex items-center pl-5 rounded-lg"
         style={{ backgroundColor: "#f97316", opacity: 0 }}
       >
         <div ref={iconRef} className="flex items-center text-white" style={{ opacity: 0.4 }}>
@@ -221,7 +221,7 @@ export function SwipeToArchive({
       </div>
 
       {/* Foreground: the card */}
-      <div ref={cardRef} className="relative bg-card rounded-xl">
+      <div ref={cardRef} className="relative bg-card rounded-lg">
         {children}
       </div>
     </div>
