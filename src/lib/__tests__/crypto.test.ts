@@ -225,6 +225,53 @@ describe("encryptIdea / decryptIdea", () => {
     expect(decrypted.body).toBe("");
     expect(decrypted.tags).toEqual([]);
   });
+
+  it("round-trips when Idea is built from Firestore-like data (migration pattern)", async () => {
+    const { salt, wrappedMK, passphrase } = await makeMKAndKEK();
+    const kek = await deriveKEK(passphrase, salt);
+    const mk = await unwrapMasterKey(wrappedMK, kek);
+
+    // Simulate what migrateToEncrypted does: build Idea from d.data() spread
+    const firestoreData = {
+      userId: "user-1",
+      title: "Migration Test",
+      body: "Body content",
+      tags: ["tag1", "tag2"],
+      status: "raw" as const,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+      archived: false,
+      sortOrder: 5,
+    };
+
+    const idea: Idea = {
+      ...firestoreData,
+      id: "doc-abc123",
+      title: firestoreData.title ?? "",
+      body: firestoreData.body ?? "",
+      tags: firestoreData.tags ?? [],
+    };
+
+    const encrypted = await encryptIdea(mk, idea);
+
+    // Simulate what subscribeToIdeas does: { id: d.id, ...d.data() }
+    // After migration, d.data() has encrypted envelope but no title/body/tags
+    const readDoc = {
+      id: "doc-abc123",
+      userId: "user-1",
+      encrypted: encrypted.encrypted,
+      status: "raw" as const,
+      createdAt: firestoreData.createdAt,
+      updatedAt: firestoreData.updatedAt,
+      archived: false,
+      sortOrder: 5,
+    };
+
+    const decrypted = await decryptIdea(mk, readDoc as Parameters<typeof decryptIdea>[1]);
+    expect(decrypted.title).toBe("Migration Test");
+    expect(decrypted.body).toBe("Body content");
+    expect(decrypted.tags).toEqual(["tag1", "tag2"]);
+  });
 });
 
 // ── Dual-mode invariant: plaintext pass-through ───────────────────────────────

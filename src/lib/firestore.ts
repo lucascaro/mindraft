@@ -15,7 +15,7 @@ import {
 } from "firebase/firestore";
 import { getDb } from "./firebase";
 import { encryptIdea, decryptIdea } from "./crypto";
-import type { Idea, FirestoreIdeaDoc } from "./types";
+import type { Idea, FirestoreIdeaDoc, MigrationState } from "./types";
 
 const COLLECTION = "ideas";
 const PREFS_COLLECTION = "userPrefs";
@@ -52,7 +52,22 @@ async function decryptDocs(
           tags: [],
         } as Idea;
       }
-      return decryptIdea(mk, d);
+      try {
+        return await decryptIdea(mk, d);
+      } catch (err) {
+        // Decryption failed — likely encrypted with a different MK
+        // (e.g., user disabled then re-enabled encryption).
+        // Show placeholder instead of crashing the entire list.
+        console.warn(`Failed to decrypt doc ${d.id}:`, err);
+        const { encrypted: _, ...rest } = d;
+        return {
+          ...rest,
+          title: "\u26a0\ufe0f Decryption failed",
+          body: "This note may have been encrypted with a different passphrase or key. "
+            + "If you recently re-enabled encryption, notes from the previous session cannot be recovered with the current key.",
+          tags: [],
+        } as Idea;
+      }
     })
   );
 }
@@ -319,4 +334,201 @@ export async function deleteAllUserIdeas(userId: string): Promise<void> {
     }
     await batch.commit();
   }
+}
+
+// ── Encryption migration ───────────────────────────────────────────────────
+
+/**
+ * Counts how many of the user's ideas are plaintext vs encrypted.
+ * Used by the Settings UI to decide whether to show a migration prompt.
+ */
+export async function countEncryptionStatus(
+  userId: string
+): Promise<{ plaintext: number; encrypted: number }> {
+  const q = query(
+    collection(getDb(), COLLECTION),
+    where("userId", "==", userId)
+  );
+  const snap = await getDocs(q);
+  let plaintext = 0;
+  let encrypted = 0;
+  for (const d of snap.docs) {
+    if (d.data().encrypted) {
+      encrypted++;
+    } else {
+      plaintext++;
+    }
+  }
+  return { plaintext, encrypted };
+}
+
+type MigrationResult = { total: number; processed: number; skipped: number };
+
+/**
+ * Encrypts all plaintext ideas for the user. Already-encrypted docs are
+ * skipped. Each doc write atomically removes plaintext fields and adds the
+ * encrypted envelope, satisfying the Firestore XOR rule.
+ */
+export async function migrateToEncrypted(
+  userId: string,
+  mk: CryptoKey,
+  onProgress?: (processed: number, total: number) => void
+): Promise<MigrationResult> {
+  const q = query(
+    collection(getDb(), COLLECTION),
+    where("userId", "==", userId)
+  );
+  const snap = await getDocs(q);
+
+  // Filter to plaintext-only docs (no encrypted envelope)
+  const plaintextDocs = snap.docs.filter((d) => !d.data().encrypted);
+  const total = plaintextDocs.length;
+  const skipped = snap.docs.length - total;
+  let processed = 0;
+  const startedAt = new Date().toISOString();
+
+  const CHUNK = 450;
+  for (let i = 0; i < plaintextDocs.length; i += CHUNK) {
+    const batch = writeBatch(getDb());
+    const chunk = plaintextDocs.slice(i, i + CHUNK);
+
+    // Encrypt all docs in this chunk in parallel, verify round-trip, then batch
+    const encrypted = await Promise.all(
+      chunk.map(async (d) => {
+        const data = d.data();
+        const idea: Idea = {
+          ...data,
+          id: d.id,
+          title: data.title ?? "",
+          body: data.body ?? "",
+          tags: data.tags ?? [],
+        } as Idea;
+        const envelope = await encryptIdea(mk, idea);
+
+        // Verify: decrypt the envelope to confirm it round-trips before committing
+        const readbackDoc: FirestoreIdeaDoc = {
+          id: d.id,
+          userId: idea.userId,
+          encrypted: envelope.encrypted,
+          status: idea.status,
+          createdAt: idea.createdAt,
+          updatedAt: idea.updatedAt,
+        };
+        const verified = await decryptIdea(mk, readbackDoc);
+        if (verified.title !== idea.title || verified.body !== idea.body) {
+          throw new Error(
+            `Migration verification failed for doc ${d.id}: ` +
+            `title match=${verified.title === idea.title}, body match=${verified.body === idea.body}`
+          );
+        }
+
+        return { ref: d.ref, envelope };
+      })
+    );
+
+    for (const { ref, envelope } of encrypted) {
+      batch.update(ref, {
+        encrypted: envelope.encrypted,
+        title: deleteField(),
+        body: deleteField(),
+        tags: deleteField(),
+        updatedAt: serverTimestamp(),
+      });
+    }
+
+    await batch.commit();
+    processed += chunk.length;
+    onProgress?.(processed, total);
+  }
+
+  // Update migration state in userPrefs
+  const prefsRef = doc(getDb(), PREFS_COLLECTION, userId);
+  const migrationState: MigrationState = {
+    direction: "encrypt",
+    total,
+    processed,
+    startedAt,
+    completedAt: new Date().toISOString(),
+  };
+  await setDoc(
+    prefsRef,
+    { encryption: { migrationState } },
+    { merge: true }
+  );
+
+  return { total, processed, skipped };
+}
+
+/**
+ * Decrypts all encrypted ideas for the user back to plaintext.
+ * Already-plaintext docs are skipped. Each doc write atomically adds
+ * plaintext fields and removes the encrypted envelope.
+ */
+export async function migrateToPlaintext(
+  userId: string,
+  mk: CryptoKey,
+  onProgress?: (processed: number, total: number) => void
+): Promise<MigrationResult> {
+  const q = query(
+    collection(getDb(), COLLECTION),
+    where("userId", "==", userId)
+  );
+  const snap = await getDocs(q);
+
+  // Filter to encrypted-only docs
+  const encryptedDocs = snap.docs.filter((d) => d.data().encrypted);
+  const total = encryptedDocs.length;
+  const skipped = snap.docs.length - total;
+  let processed = 0;
+  const startedAt = new Date().toISOString();
+
+  const CHUNK = 450;
+  for (let i = 0; i < encryptedDocs.length; i += CHUNK) {
+    const batch = writeBatch(getDb());
+    const chunk = encryptedDocs.slice(i, i + CHUNK);
+
+    // Decrypt all docs in this chunk in parallel, then add to batch
+    const decrypted = await Promise.all(
+      chunk.map(async (d) => {
+        const data = d.data();
+        const firestoreDoc: FirestoreIdeaDoc = {
+          id: d.id,
+          ...data,
+        } as FirestoreIdeaDoc;
+        const idea = await decryptIdea(mk, firestoreDoc);
+        return { ref: d.ref, idea };
+      })
+    );
+
+    for (const { ref, idea } of decrypted) {
+      batch.update(ref, {
+        title: idea.title,
+        body: idea.body,
+        tags: idea.tags,
+        encrypted: deleteField(),
+        updatedAt: serverTimestamp(),
+      });
+    }
+
+    await batch.commit();
+    processed += chunk.length;
+    onProgress?.(processed, total);
+  }
+
+  // Update migration state in userPrefs
+  const prefsRef = doc(getDb(), PREFS_COLLECTION, userId);
+  const migrationState: MigrationState = {
+    direction: "decrypt",
+    total,
+    processed,
+    startedAt,
+    completedAt: new Date().toISOString(),
+  };
+  await setDoc(
+    prefsRef,
+    { encryption: { migrationState } },
+    { merge: true }
+  );
+
+  return { total, processed, skipped };
 }

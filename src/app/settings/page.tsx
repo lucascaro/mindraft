@@ -5,7 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useCrypto } from "@/lib/crypto-context";
-import { exportAllIdeas } from "@/lib/firestore";
+import {
+  exportAllIdeas,
+  countEncryptionStatus,
+  migrateToEncrypted,
+  migrateToPlaintext,
+} from "@/lib/firestore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EncryptionSetup } from "@/components/encryption-setup";
@@ -24,7 +29,7 @@ import {
 
 export default function SettingsPage() {
   const { user, loading, deleteAccount } = useAuth();
-  const { mk, encryptionEnabled, disableEncryption } = useCrypto();
+  const { mk, encryptionEnabled, disableEncryption, unlock } = useCrypto();
   const router = useRouter();
   const [exporting, setExporting] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -38,6 +43,18 @@ export default function SettingsPage() {
   const [disablePassphrase, setDisablePassphrase] = useState("");
   const [disablingEncryption, setDisablingEncryption] = useState(false);
   const [encryptionError, setEncryptionError] = useState<string | null>(null);
+  // Migration state
+  const [plaintextCount, setPlaintextCount] = useState<number | null>(null);
+  const [encryptedCount, setEncryptedCount] = useState<number | null>(null);
+  const [migrating, setMigrating] = useState(false);
+  const [migrationProgress, setMigrationProgress] = useState<{
+    processed: number;
+    total: number;
+  } | null>(null);
+  const [migrationResult, setMigrationResult] = useState<string | null>(null);
+  const [migrationError, setMigrationError] = useState<string | null>(null);
+  const [showDecryptOption, setShowDecryptOption] = useState(false);
+  const [confirmSkipDecrypt, setConfirmSkipDecrypt] = useState(false);
 
   const mcpUrl =
     typeof window !== "undefined"
@@ -62,6 +79,30 @@ export default function SettingsPage() {
       router.push("/login");
     }
   }, [user, loading, router]);
+
+  // Count plaintext vs encrypted docs when encryption is enabled
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!user || !encryptionEnabled) {
+      setPlaintextCount(null);
+      setEncryptedCount(null);
+      return () => { cancelled = true; };
+    }
+
+    countEncryptionStatus(user.uid)
+      .then(({ plaintext, encrypted }) => {
+        if (cancelled) return;
+        setPlaintextCount(plaintext);
+        setEncryptedCount(encrypted);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error("Failed to count encryption status:", err);
+      });
+
+    return () => { cancelled = true; };
+  }, [user, encryptionEnabled]);
 
   const handleExport = async () => {
     if (!user) return;
@@ -105,6 +146,76 @@ export default function SettingsPage() {
     }
   };
 
+  const handleEncryptAll = async (): Promise<boolean> => {
+    if (!user || !mk) return false;
+    setMigrating(true);
+    setMigrationError(null);
+    setMigrationResult(null);
+    setMigrationProgress({ processed: 0, total: plaintextCount ?? 0 });
+    try {
+      const result = await migrateToEncrypted(user.uid, mk, (processed, total) => {
+        setMigrationProgress({ processed, total });
+      });
+      setMigrationResult(
+        `Encrypted ${result.processed} note${result.processed !== 1 ? "s" : ""}.`
+      );
+      setPlaintextCount(0);
+      setEncryptedCount((prev) => (prev ?? 0) + result.processed);
+      return true;
+    } catch (err) {
+      setMigrationError(
+        err instanceof Error ? err.message : "Migration failed. You can retry safely."
+      );
+      // Re-fetch actual counts after partial failure
+      try {
+        const counts = await countEncryptionStatus(user.uid);
+        setPlaintextCount(counts.plaintext);
+        setEncryptedCount(counts.encrypted);
+      } catch {
+        // Secondary failure — leave counts stale rather than masking the primary error
+      }
+      return false;
+    } finally {
+      setMigrating(false);
+      setMigrationProgress(null);
+    }
+  };
+
+  const handleDecryptAll = async (): Promise<boolean> => {
+    if (!user || !mk) return false;
+    setMigrating(true);
+    setMigrationError(null);
+    setMigrationResult(null);
+    setMigrationProgress({ processed: 0, total: encryptedCount ?? 0 });
+    try {
+      const result = await migrateToPlaintext(user.uid, mk, (processed, total) => {
+        setMigrationProgress({ processed, total });
+      });
+      setMigrationResult(
+        `Decrypted ${result.processed} note${result.processed !== 1 ? "s" : ""}.`
+      );
+      setEncryptedCount(0);
+      setPlaintextCount((prev) => (prev ?? 0) + result.processed);
+      return true;
+    } catch (err) {
+      setMigrationError(
+        err instanceof Error ? err.message : "Migration failed. You can retry safely."
+      );
+      // Re-fetch actual counts after partial failure
+      try {
+        const counts = await countEncryptionStatus(user.uid);
+        setPlaintextCount(counts.plaintext);
+        setEncryptedCount(counts.encrypted);
+      } catch {
+        // Secondary failure — leave counts stale rather than masking the primary error
+      }
+      return false;
+    } finally {
+      setMigrating(false);
+      setMigrationProgress(null);
+    }
+  };
+
   const handleDisableEncryption = async () => {
     setEncryptionError(null);
     setDisablingEncryption(true);
@@ -112,6 +223,7 @@ export default function SettingsPage() {
       await disableEncryption(disablePassphrase);
       setConfirmingDisableEncryption(false);
       setDisablePassphrase("");
+      setShowDecryptOption(false);
     } catch {
       setEncryptionError("Incorrect passphrase. Please try again.");
     } finally {
@@ -243,6 +355,78 @@ export default function SettingsPage() {
                 </span>
               </div>
 
+              {/* Migration: encrypt existing plaintext notes */}
+              {plaintextCount != null && plaintextCount > 0 && !migrating && !migrationResult && (
+                <div className="rounded-lg border border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20 p-3 space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    You have{" "}
+                    <strong className="text-foreground">
+                      {plaintextCount} unencrypted{" "}
+                      {plaintextCount === 1 ? "note" : "notes"}
+                    </strong>{" "}
+                    that {plaintextCount === 1 ? "was" : "were"} created before
+                    encryption was enabled.
+                  </p>
+                  <Button
+                    size="sm"
+                    onClick={handleEncryptAll}
+                    disabled={!mk}
+                  >
+                    <Lock className="h-3.5 w-3.5 mr-1.5" />
+                    Encrypt all notes
+                  </Button>
+                </div>
+              )}
+
+              {/* Migration progress */}
+              {migrating && migrationProgress && (
+                <div className="rounded-lg border p-3 space-y-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>
+                      Migrating... {migrationProgress.processed} /{" "}
+                      {migrationProgress.total}
+                    </span>
+                  </div>
+                  <div
+                    className="h-2 rounded-full bg-muted overflow-hidden"
+                    role="progressbar"
+                    aria-valuenow={migrationProgress.processed}
+                    aria-valuemin={0}
+                    aria-valuemax={migrationProgress.total}
+                    aria-label="Encryption migration progress"
+                  >
+                    <div
+                      className="h-full bg-primary rounded-full transition-all"
+                      style={{
+                        width: `${
+                          migrationProgress.total > 0
+                            ? (migrationProgress.processed /
+                                migrationProgress.total) *
+                              100
+                            : 0
+                        }%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Migration result */}
+              {migrationResult && (
+                <p className="text-sm text-green-600 dark:text-green-400">
+                  <Check className="h-3.5 w-3.5 inline mr-1" />
+                  {migrationResult}
+                </p>
+              )}
+
+              {/* Migration error */}
+              {migrationError && (
+                <p className="text-sm text-destructive" role="alert">
+                  {migrationError}
+                </p>
+              )}
+
               {!confirmingDisableEncryption ? (
                 <Button
                   variant="outline"
@@ -250,20 +434,17 @@ export default function SettingsPage() {
                   onClick={() => {
                     setConfirmingDisableEncryption(true);
                     setEncryptionError(null);
+                    setShowDecryptOption(false);
                   }}
+                  disabled={migrating}
                   className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
                 >
                   Disable encryption
                 </Button>
-              ) : (
+              ) : !showDecryptOption ? (
                 <div className="space-y-2 rounded-lg border border-destructive/30 p-3">
                   <p className="text-sm text-muted-foreground">
-                    Enter your passphrase to confirm. This will mark encryption
-                    as disabled but{" "}
-                    <strong className="text-foreground">
-                      will not automatically decrypt your existing notes
-                    </strong>
-                    . Use the migration tool (coming soon) to restore plaintext.
+                    Enter your passphrase to confirm.
                   </p>
                   <Input
                     type="password"
@@ -293,17 +474,156 @@ export default function SettingsPage() {
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={handleDisableEncryption}
+                      onClick={async () => {
+                        if (encryptedCount === null) {
+                          // Counts still loading — wait for them before proceeding
+                          setEncryptionError("Still checking your notes. Please wait a moment and try again.");
+                          return;
+                        }
+                        if (encryptedCount > 0) {
+                          // Verify passphrase before showing decrypt option
+                          setDisablingEncryption(true);
+                          setEncryptionError(null);
+                          try {
+                            const valid = await unlock(disablePassphrase);
+                            if (!valid) {
+                              setEncryptionError("Incorrect passphrase. Please try again.");
+                              return;
+                            }
+                            setShowDecryptOption(true);
+                          } finally {
+                            setDisablingEncryption(false);
+                          }
+                        } else {
+                          handleDisableEncryption();
+                        }
+                      }}
                       disabled={!disablePassphrase || disablingEncryption}
                     >
                       {disablingEncryption ? (
                         <>
                           <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                          Disabling…
+                          Verifying…
                         </>
                       ) : (
-                        "Confirm disable"
+                        "Continue"
                       )}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2 rounded-lg border border-destructive/30 p-3">
+                  <p className="text-sm text-muted-foreground">
+                    You have{" "}
+                    <strong className="text-foreground">
+                      {encryptedCount} encrypted{" "}
+                      {encryptedCount === 1 ? "note" : "notes"}
+                    </strong>
+                    . Would you like to decrypt them to plaintext before
+                    disabling encryption?
+                  </p>
+
+                  {migrating && migrationProgress && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>
+                          Decrypting... {migrationProgress.processed} /{" "}
+                          {migrationProgress.total}
+                        </span>
+                      </div>
+                      <div
+                        className="h-2 rounded-full bg-muted overflow-hidden"
+                        role="progressbar"
+                        aria-valuenow={migrationProgress.processed}
+                        aria-valuemin={0}
+                        aria-valuemax={migrationProgress.total}
+                        aria-label="Decryption migration progress"
+                      >
+                        <div
+                          className="h-full bg-primary rounded-full transition-all"
+                          style={{
+                            width: `${
+                              migrationProgress.total > 0
+                                ? (migrationProgress.processed /
+                                    migrationProgress.total) *
+                                  100
+                                : 0
+                            }%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {migrationError && (
+                    <p className="text-sm text-destructive" role="alert">
+                      {migrationError}
+                    </p>
+                  )}
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setShowDecryptOption(false);
+                        setConfirmingDisableEncryption(false);
+                        setConfirmSkipDecrypt(false);
+                        setDisablePassphrase("");
+                      }}
+                      disabled={migrating || disablingEncryption}
+                    >
+                      Cancel
+                    </Button>
+                    {!confirmSkipDecrypt ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setConfirmSkipDecrypt(true)}
+                        disabled={migrating || disablingEncryption}
+                      >
+                        Skip, just disable
+                      </Button>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        <p className="text-sm text-destructive/90 bg-destructive/10 rounded p-2">
+                          ⚠️ Your {encryptedCount} encrypted{" "}
+                          {encryptedCount === 1 ? "note" : "notes"} will remain
+                          encrypted and appear as &ldquo;[encrypted]&rdquo;.
+                          If you re-enable encryption later, a new key will be
+                          generated and those notes will be{" "}
+                          <strong>permanently unreadable</strong>.
+                        </p>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={handleDisableEncryption}
+                          disabled={migrating || disablingEncryption}
+                        >
+                          {disablingEncryption ? (
+                            <>
+                              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                              Disabling…
+                            </>
+                          ) : (
+                            "Yes, disable without decrypting"
+                          )}
+                        </Button>
+                      </div>
+                    )}
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={async () => {
+                        const ok = await handleDecryptAll();
+                        if (ok) {
+                          await handleDisableEncryption();
+                        }
+                      }}
+                      disabled={migrating || disablingEncryption}
+                    >
+                      Decrypt all, then disable
                     </Button>
                   </div>
                 </div>

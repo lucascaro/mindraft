@@ -156,6 +156,18 @@ export function CryptoProvider({
   const enableEncryption = async (passphrase: string, rawMK?: Uint8Array): Promise<void> => {
     if (!userId) throw new Error("Not signed in");
 
+    // Guard: refuse to enable if there are orphaned encrypted docs from a
+    // previous MK. Re-enabling would generate a new MK, making those docs
+    // permanently undecryptable.
+    const { countEncryptionStatus } = await import("./firestore");
+    const { encrypted } = await countEncryptionStatus(userId);
+    if (encrypted > 0) {
+      throw new Error(
+        `Cannot enable encryption: ${encrypted} note(s) are still encrypted with a previous key. ` +
+        "Delete those notes or contact support before re-enabling."
+      );
+    }
+
     const salt = generateSalt();
     // Use caller-provided MK bytes (from recovery-key wizard) or generate fresh
     let raw: Uint8Array;
