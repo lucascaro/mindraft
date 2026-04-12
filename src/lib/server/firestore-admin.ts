@@ -212,7 +212,6 @@ export async function searchIdeas(userId: string, query: string, limit = 50): Pr
   const snap = await db
     .collection(COLLECTION)
     .where("userId", "==", userId)
-    .where("archived", "!=", true)
     .orderBy("createdAt", "desc")
     .limit(500)
     .get();
@@ -224,6 +223,7 @@ export async function searchIdeas(userId: string, query: string, limit = 50): Pr
 
   for (const d of snap.docs) {
     const full = serialize(d.id, d.data());
+    if (full.archived) continue;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { body, ...summary } = full;
     if (full.title.toLowerCase().includes(q)) {
