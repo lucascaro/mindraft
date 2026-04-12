@@ -1,6 +1,7 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, fireEvent, within } from "@testing-library/react";
 import { IdeaCard } from "../idea-card";
+import * as firestore from "@/lib/firestore";
 import type { Idea } from "@/lib/types";
 
 function mockIdea(overrides: Partial<Idea> = {}): Idea {
@@ -72,5 +73,154 @@ describe("IdeaCard", () => {
     const card = getByLabelText("Test Idea");
     fireEvent.keyDown(card, { key: "Enter" });
     expect(onExpand).toHaveBeenCalledTimes(1);
+  });
+
+  describe("Save behavior (active)", () => {
+    beforeEach(() => {
+      vi.mocked(firestore.updateIdea).mockClear();
+      vi.mocked(firestore.archiveIdea).mockClear();
+      vi.mocked(firestore.deleteIdea).mockClear();
+    });
+
+    function renderEditing(idea = mockIdea()) {
+      const onCollapse = vi.fn();
+      const utils = render(
+        <IdeaCard idea={idea} expanded={true} onExpand={vi.fn()} onCollapse={onCollapse} />
+      );
+      fireEvent.click(utils.getByLabelText("Edit idea"));
+      return { ...utils, onCollapse };
+    }
+
+    it("Save button is disabled when not dirty, enabled after edit", () => {
+      const { getByRole } = renderEditing();
+      const saveBtn = getByRole("button", { name: "Save" }) as HTMLButtonElement;
+      expect(saveBtn.disabled).toBe(true);
+
+      fireEvent.change(getByRole("textbox", { name: "Idea body" }), {
+        target: { value: "new body" },
+      });
+      expect(saveBtn.disabled).toBe(false);
+    });
+
+    it("clicking Save calls updateIdea with diff and exits edit mode", async () => {
+      const { getByRole, queryByLabelText } = renderEditing();
+      fireEvent.change(getByRole("textbox", { name: "Idea body" }), {
+        target: { value: "new body" },
+      });
+      fireEvent.click(getByRole("button", { name: "Save" }));
+
+      await Promise.resolve();
+      expect(firestore.updateIdea).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(firestore.updateIdea).mock.calls[0][1]).toEqual({ body: "new body" });
+      // Edit mode exited (Edit button visible again)
+      expect(queryByLabelText("Edit idea")).not.toBeNull();
+    });
+
+    it("does NOT auto-save on close — does not call updateIdea when closing without changes", () => {
+      const { getAllByLabelText, onCollapse } = renderEditing();
+      fireEvent.click(getAllByLabelText("Close idea")[0]);
+      expect(firestore.updateIdea).not.toHaveBeenCalled();
+      expect(onCollapse).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows Unsaved changes prompt when closing dirty", () => {
+      const { getByRole, getByText, getAllByLabelText, onCollapse } = renderEditing();
+      fireEvent.change(getByRole("textbox", { name: "Idea body" }), {
+        target: { value: "dirty" },
+      });
+      fireEvent.click(getAllByLabelText("Close idea")[0]);
+      expect(getByText("Unsaved changes")).toBeDefined();
+      expect(onCollapse).not.toHaveBeenCalled();
+    });
+
+    it("Discard from unsaved-changes prompt collapses without saving", () => {
+      const { getByRole, getAllByLabelText, onCollapse } = renderEditing();
+      fireEvent.change(getByRole("textbox", { name: "Idea body" }), {
+        target: { value: "dirty" },
+      });
+      fireEvent.click(getAllByLabelText("Close idea")[0]);
+      fireEvent.click(getByRole("button", { name: "Discard" }));
+      expect(firestore.updateIdea).not.toHaveBeenCalled();
+      expect(onCollapse).toHaveBeenCalledTimes(1);
+    });
+
+    it("Save from unsaved-changes prompt persists then collapses", async () => {
+      const { getByRole, getAllByLabelText, onCollapse } = renderEditing();
+      fireEvent.change(getByRole("textbox", { name: "Idea body" }), {
+        target: { value: "dirty" },
+      });
+      fireEvent.click(getAllByLabelText("Close idea")[0]);
+      // The Save inside the prompt is the only enabled "Save" button at this point
+      fireEvent.click(getByRole("button", { name: "Save" }));
+      // Flush microtasks for awaited save then the synchronous follow-ups
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(firestore.updateIdea).toHaveBeenCalledTimes(1);
+      expect(onCollapse).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("Delete behavior", () => {
+    beforeEach(() => {
+      vi.mocked(firestore.deleteIdea).mockClear();
+    });
+
+    it("active edit mode: Delete requires confirmation", async () => {
+      const { getByLabelText, getByRole } = render(
+        <IdeaCard idea={mockIdea()} expanded={true} onExpand={vi.fn()} onCollapse={vi.fn()} />
+      );
+      fireEvent.click(getByLabelText("Edit idea"));
+      fireEvent.click(getByRole("button", { name: /Delete/i }));
+      // Now confirmation visible — first click did NOT delete
+      expect(firestore.deleteIdea).not.toHaveBeenCalled();
+      // Confirm
+      fireEvent.click(getByRole("button", { name: "Delete" }));
+      await Promise.resolve();
+      expect(firestore.deleteIdea).toHaveBeenCalledWith("test-1");
+    });
+  });
+
+  describe("Archive mode", () => {
+    beforeEach(() => {
+      vi.mocked(firestore.deleteIdea).mockClear();
+      vi.mocked(firestore.restoreIdea).mockClear();
+    });
+
+    it("does not show Edit button when expanded", () => {
+      const { queryByLabelText } = render(
+        <IdeaCard
+          idea={mockIdea()}
+          mode="archived"
+          expanded={true}
+          onExpand={vi.fn()}
+          onCollapse={vi.fn()}
+        />
+      );
+      expect(queryByLabelText("Edit idea")).toBeNull();
+    });
+
+    it("view mode footer shows Restore and Delete (with confirmation)", async () => {
+      const { container, getByRole } = render(
+        <IdeaCard
+          idea={mockIdea()}
+          mode="archived"
+          expanded={true}
+          onExpand={vi.fn()}
+          onCollapse={vi.fn()}
+        />
+      );
+      const expanded = container.querySelector("[aria-expanded='true']") as HTMLElement;
+      const scoped = within(expanded);
+
+      fireEvent.click(scoped.getByRole("button", { name: /Restore/i }));
+      expect(firestore.restoreIdea).toHaveBeenCalledWith("test-1");
+
+      // Trigger delete confirmation
+      fireEvent.click(scoped.getByRole("button", { name: /Delete/i }));
+      expect(firestore.deleteIdea).not.toHaveBeenCalled();
+      fireEvent.click(getByRole("button", { name: "Delete" }));
+      await Promise.resolve();
+      expect(firestore.deleteIdea).toHaveBeenCalledWith("test-1");
+    });
   });
 });

@@ -76,8 +76,9 @@ test.describe("Ideas page", () => {
     const bodyInput = page.getByLabel("Idea body");
     await bodyInput.fill("This is the body content");
 
-    // Exit edit mode
-    await page.getByLabel("Done editing").click();
+    // Click Save to persist changes
+    const expandedCard = page.locator("[aria-expanded='true']");
+    await expandedCard.getByRole("button", { name: "Save" }).click();
 
     // Body should be visible in view mode (use first() since preview also shows it)
     await expect(page.getByText("This is the body content").first()).toBeVisible();
