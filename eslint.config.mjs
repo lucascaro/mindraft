@@ -15,6 +15,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Ignore Claude worktrees:
+    ".claude/**",
   ]),
   ...storybook.configs["flat/recommended"]
 ]);
