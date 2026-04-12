@@ -134,8 +134,8 @@ export default function SettingsPage() {
     }
   };
 
-  const handleEncryptAll = async () => {
-    if (!user || !mk) return;
+  const handleEncryptAll = async (): Promise<boolean> => {
+    if (!user || !mk) return false;
     setMigrating(true);
     setMigrationError(null);
     setMigrationResult(null);
@@ -149,18 +149,24 @@ export default function SettingsPage() {
       );
       setPlaintextCount(0);
       setEncryptedCount((prev) => (prev ?? 0) + result.processed);
+      return true;
     } catch (err) {
       setMigrationError(
         err instanceof Error ? err.message : "Migration failed. You can retry safely."
       );
+      // Re-fetch actual counts after partial failure
+      const counts = await countEncryptionStatus(user.uid);
+      setPlaintextCount(counts.plaintext);
+      setEncryptedCount(counts.encrypted);
+      return false;
     } finally {
       setMigrating(false);
       setMigrationProgress(null);
     }
   };
 
-  const handleDecryptAll = async () => {
-    if (!user || !mk) return;
+  const handleDecryptAll = async (): Promise<boolean> => {
+    if (!user || !mk) return false;
     setMigrating(true);
     setMigrationError(null);
     setMigrationResult(null);
@@ -174,10 +180,16 @@ export default function SettingsPage() {
       );
       setEncryptedCount(0);
       setPlaintextCount((prev) => (prev ?? 0) + result.processed);
+      return true;
     } catch (err) {
       setMigrationError(
         err instanceof Error ? err.message : "Migration failed. You can retry safely."
       );
+      // Re-fetch actual counts after partial failure
+      const counts = await countEncryptionStatus(user.uid);
+      setPlaintextCount(counts.plaintext);
+      setEncryptedCount(counts.encrypted);
+      return false;
     } finally {
       setMigrating(false);
       setMigrationProgress(null);
@@ -531,8 +543,8 @@ export default function SettingsPage() {
                       variant="destructive"
                       size="sm"
                       onClick={async () => {
-                        await handleDecryptAll();
-                        if (!migrationError) {
+                        const ok = await handleDecryptAll();
+                        if (ok) {
                           await handleDisableEncryption();
                         }
                       }}

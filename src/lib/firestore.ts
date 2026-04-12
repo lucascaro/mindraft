@@ -370,6 +370,7 @@ export async function migrateToEncrypted(
   const total = plaintextDocs.length;
   const skipped = snap.docs.length - total;
   let processed = 0;
+  const startedAt = new Date().toISOString();
 
   const CHUNK = 450;
   for (let i = 0; i < plaintextDocs.length; i += CHUNK) {
@@ -381,11 +382,11 @@ export async function migrateToEncrypted(
       chunk.map(async (d) => {
         const data = d.data();
         const idea: Idea = {
+          ...data,
           id: d.id,
           title: data.title ?? "",
           body: data.body ?? "",
           tags: data.tags ?? [],
-          ...data,
         } as Idea;
         return { ref: d.ref, envelope: await encryptIdea(mk, idea) };
       })
@@ -412,7 +413,7 @@ export async function migrateToEncrypted(
     direction: "encrypt",
     total,
     processed,
-    startedAt: new Date().toISOString(),
+    startedAt,
     completedAt: new Date().toISOString(),
   };
   await setDoc(
@@ -445,6 +446,7 @@ export async function migrateToPlaintext(
   const total = encryptedDocs.length;
   const skipped = snap.docs.length - total;
   let processed = 0;
+  const startedAt = new Date().toISOString();
 
   const CHUNK = 450;
   for (let i = 0; i < encryptedDocs.length; i += CHUNK) {
@@ -485,7 +487,7 @@ export async function migrateToPlaintext(
     direction: "decrypt",
     total,
     processed,
-    startedAt: new Date().toISOString(),
+    startedAt,
     completedAt: new Date().toISOString(),
   };
   await setDoc(
