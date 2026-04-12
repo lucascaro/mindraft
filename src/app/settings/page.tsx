@@ -167,9 +167,13 @@ export default function SettingsPage() {
         err instanceof Error ? err.message : "Migration failed. You can retry safely."
       );
       // Re-fetch actual counts after partial failure
-      const counts = await countEncryptionStatus(user.uid);
-      setPlaintextCount(counts.plaintext);
-      setEncryptedCount(counts.encrypted);
+      try {
+        const counts = await countEncryptionStatus(user.uid);
+        setPlaintextCount(counts.plaintext);
+        setEncryptedCount(counts.encrypted);
+      } catch {
+        // Secondary failure — leave counts stale rather than masking the primary error
+      }
       return false;
     } finally {
       setMigrating(false);
@@ -198,9 +202,13 @@ export default function SettingsPage() {
         err instanceof Error ? err.message : "Migration failed. You can retry safely."
       );
       // Re-fetch actual counts after partial failure
-      const counts = await countEncryptionStatus(user.uid);
-      setPlaintextCount(counts.plaintext);
-      setEncryptedCount(counts.encrypted);
+      try {
+        const counts = await countEncryptionStatus(user.uid);
+        setPlaintextCount(counts.plaintext);
+        setEncryptedCount(counts.encrypted);
+      } catch {
+        // Secondary failure — leave counts stale rather than masking the primary error
+      }
       return false;
     } finally {
       setMigrating(false);
@@ -467,7 +475,12 @@ export default function SettingsPage() {
                       variant="destructive"
                       size="sm"
                       onClick={async () => {
-                        if (encryptedCount && encryptedCount > 0) {
+                        if (encryptedCount === null) {
+                          // Counts still loading — wait for them before proceeding
+                          setEncryptionError("Still checking your notes. Please wait a moment and try again.");
+                          return;
+                        }
+                        if (encryptedCount > 0) {
                           // Verify passphrase before showing decrypt option
                           setDisablingEncryption(true);
                           setEncryptionError(null);
