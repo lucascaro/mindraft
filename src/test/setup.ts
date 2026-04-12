@@ -73,6 +73,21 @@ vi.mock("@/lib/theme-context", () => ({
   useTheme: vi.fn().mockReturnValue({ resolvedTheme: "light" }),
 }));
 
+// Mock crypto context (encryption disabled by default in tests)
+vi.mock("@/lib/crypto-context", () => ({
+  useCrypto: vi.fn().mockReturnValue({
+    mk: null,
+    locked: false,
+    encryptionEnabled: false,
+    unlockError: null,
+    unlock: vi.fn(),
+    lock: vi.fn(),
+    enableEncryption: vi.fn(),
+    changePassphrase: vi.fn(),
+    disableEncryption: vi.fn(),
+  }),
+}));
+
 // Mock tag-color-context (avoids needing the full provider tree)
 vi.mock("@/lib/tag-color-context", () => ({
   useTagColors: vi.fn().mockReturnValue({

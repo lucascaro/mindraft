@@ -24,7 +24,7 @@ import {
 
 export default function SettingsPage() {
   const { user, loading, deleteAccount } = useAuth();
-  const { encryptionEnabled, disableEncryption } = useCrypto();
+  const { mk, encryptionEnabled, disableEncryption } = useCrypto();
   const router = useRouter();
   const [exporting, setExporting] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -68,7 +68,7 @@ export default function SettingsPage() {
     setError(null);
     setExporting(true);
     try {
-      const ideas = await exportAllIdeas(user.uid);
+      const ideas = await exportAllIdeas(user.uid, mk);
       // Convert Firestore Timestamps to ISO strings for portability.
       const serializable = ideas.map((i) => ({
         ...i,

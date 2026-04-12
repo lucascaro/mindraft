@@ -75,7 +75,8 @@ function notifyTagColorListeners(userId: string) {
 export function subscribeToIdeas(
   userId: string,
   callback: (ideas: Idea[]) => void,
-  filter: "active" | "archived" = "active"
+  filter: "active" | "archived" = "active",
+  _mk: CryptoKey | null = null
 ) {
   const entry = { userId, filter, cb: callback };
   ideaListeners.add(entry);
@@ -109,7 +110,7 @@ export function subscribeToIdeas(
   };
 }
 
-export async function addIdea(userId: string, title: string, body = "") {
+export async function addIdea(userId: string, title: string, body = "", _mk: CryptoKey | null = null) {
   const now = mockTimestamp();
   const idea: Idea = {
     id: `mock-${nextId++}`,
@@ -128,7 +129,8 @@ export async function addIdea(userId: string, title: string, body = "") {
 
 export async function updateIdea(
   id: string,
-  data: Partial<Omit<Idea, "id" | "createdAt" | "userId">>
+  data: Partial<Omit<Idea, "id" | "createdAt" | "userId">>,
+  _opts?: { mk?: CryptoKey | null; currentIdea?: Idea }
 ) {
   const idx = ideas.findIndex((i) => i.id === id);
   if (idx === -1) return;
@@ -197,7 +199,7 @@ export async function setTagColor(userId: string, tag: string, colorKey: string)
   notifyTagColorListeners(userId);
 }
 
-export async function exportAllIdeas(userId: string): Promise<Idea[]> {
+export async function exportAllIdeas(userId: string, _mk: CryptoKey | null = null): Promise<Idea[]> {
   return ideas
     .filter((i) => i.userId === userId)
     .sort((a, b) => {

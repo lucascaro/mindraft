@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useCrypto } from "@/lib/crypto-context";
 import { subscribeToIdeas } from "@/lib/firestore";
 import { useIdeaFilter } from "@/lib/use-idea-filter";
 import { QuickCapture } from "@/components/quick-capture";
@@ -19,6 +20,7 @@ import { cn } from "@/lib/utils";
 
 export default function IdeasPage() {
   const { user, loading, signOut } = useAuth();
+  const { mk } = useCrypto();
   const router = useRouter();
   const [ideas, setIdeas] = useState<Idea[] | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -44,9 +46,9 @@ export default function IdeasPage() {
 
   useEffect(() => {
     if (!user) return;
-    const unsubscribe = subscribeToIdeas(user.uid, setIdeas);
+    const unsubscribe = subscribeToIdeas(user.uid, setIdeas, "active", mk);
     return unsubscribe;
-  }, [user]);
+  }, [user, mk]);
 
   const showSkeleton = loading || !user || ideas === null;
 

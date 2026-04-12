@@ -1,11 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Capture the data passed to addDoc
-const addDocMock = vi.fn().mockResolvedValue({ id: "mock-id" });
+// Capture the data passed to setDoc
+const setDocMock = vi.fn().mockResolvedValue(undefined);
+const mockDocRef = { id: "mock-id" };
 
 vi.mock("firebase/firestore", () => ({
   collection: vi.fn(),
-  addDoc: (...args: unknown[]) => addDocMock(...args),
+  doc: (...args: unknown[]) => {
+    // When called with just a collection ref (pre-generate ID), return mock ref
+    if (args.length === 1) return mockDocRef;
+    return mockDocRef;
+  },
+  setDoc: (...args: unknown[]) => setDocMock(...args),
   serverTimestamp: () => "SERVER_TS",
 }));
 
@@ -13,19 +19,25 @@ vi.mock("@/lib/firebase", () => ({
   getDb: vi.fn(),
 }));
 
+// Mock crypto module — not used in plaintext tests but imported by firestore.ts
+vi.mock("@/lib/crypto", () => ({
+  encryptIdea: vi.fn(),
+  decryptIdea: vi.fn(),
+}));
+
 // Import after mocks are set up
 const { addIdea } = await import("@/lib/firestore");
 
 describe("addIdea", () => {
   beforeEach(() => {
-    addDocMock.mockClear();
+    setDocMock.mockClear();
   });
 
   it("should not include 'archived' or 'sortOrder' in the created document", async () => {
     await addIdea("user-1", "My Idea", "Some body");
 
-    expect(addDocMock).toHaveBeenCalledOnce();
-    const payload = addDocMock.mock.calls[0][1];
+    expect(setDocMock).toHaveBeenCalledOnce();
+    const payload = setDocMock.mock.calls[0][1];
 
     expect(payload).not.toHaveProperty("archived");
     expect(payload).not.toHaveProperty("archivedAt");
@@ -36,7 +48,7 @@ describe("addIdea", () => {
   it("should include all required fields for firestore rules validCreate()", async () => {
     await addIdea("user-1", "Title", "Body");
 
-    const payload = addDocMock.mock.calls[0][1];
+    const payload = setDocMock.mock.calls[0][1];
 
     expect(payload).toMatchObject({
       userId: "user-1",
@@ -48,7 +60,7 @@ describe("addIdea", () => {
       updatedAt: "SERVER_TS",
     });
 
-    // Only allowed keys per firestore.rules validCreate()
+    // Only allowed keys per firestore.rules validCreate() — plaintext schema
     const allowedKeys = [
       "userId",
       "title",
