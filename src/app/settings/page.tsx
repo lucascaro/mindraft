@@ -54,6 +54,7 @@ export default function SettingsPage() {
   const [migrationResult, setMigrationResult] = useState<string | null>(null);
   const [migrationError, setMigrationError] = useState<string | null>(null);
   const [showDecryptOption, setShowDecryptOption] = useState(false);
+  const [confirmSkipDecrypt, setConfirmSkipDecrypt] = useState(false);
 
   const mcpUrl =
     typeof window !== "undefined"
@@ -555,27 +556,49 @@ export default function SettingsPage() {
                       onClick={() => {
                         setShowDecryptOption(false);
                         setConfirmingDisableEncryption(false);
+                        setConfirmSkipDecrypt(false);
                         setDisablePassphrase("");
                       }}
                       disabled={migrating || disablingEncryption}
                     >
                       Cancel
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleDisableEncryption}
-                      disabled={migrating || disablingEncryption}
-                    >
-                      {disablingEncryption ? (
-                        <>
-                          <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                          Disabling…
-                        </>
-                      ) : (
-                        "Skip, just disable"
-                      )}
-                    </Button>
+                    {!confirmSkipDecrypt ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setConfirmSkipDecrypt(true)}
+                        disabled={migrating || disablingEncryption}
+                      >
+                        Skip, just disable
+                      </Button>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        <p className="text-sm text-destructive/90 bg-destructive/10 rounded p-2">
+                          ⚠️ Your {encryptedCount} encrypted{" "}
+                          {encryptedCount === 1 ? "note" : "notes"} will remain
+                          encrypted and appear as &ldquo;[encrypted]&rdquo;.
+                          If you re-enable encryption later, a new key will be
+                          generated and those notes will be{" "}
+                          <strong>permanently unreadable</strong>.
+                        </p>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={handleDisableEncryption}
+                          disabled={migrating || disablingEncryption}
+                        >
+                          {disablingEncryption ? (
+                            <>
+                              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                              Disabling…
+                            </>
+                          ) : (
+                            "Yes, disable without decrypting"
+                          )}
+                        </Button>
+                      </div>
+                    )}
                     <Button
                       variant="destructive"
                       size="sm"
