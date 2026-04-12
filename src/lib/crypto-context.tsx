@@ -52,10 +52,12 @@ type CryptoContextType = {
   /** Zero the in-memory MK and mark as locked */
   lock: () => void;
   /**
-   * Enable encryption: generate a fresh MK, wrap it with the passphrase,
-   * and persist to userPrefs. Does NOT encrypt existing idea documents.
+   * Enable encryption: wrap the MK with the passphrase and persist to userPrefs.
+   * If rawMK is provided, it is used as the master key (caller generated it for
+   * recovery-key display). Otherwise a fresh MK is generated internally.
+   * Does NOT encrypt existing idea documents.
    */
-  enableEncryption: (passphrase: string) => Promise<void>;
+  enableEncryption: (passphrase: string, rawMK?: Uint8Array) => Promise<void>;
   /**
    * Change passphrase: re-wrap the existing MK with the new passphrase.
    * Increments mkVersion so any running stdio servers re-prompt.
@@ -151,11 +153,27 @@ export function CryptoProvider({
     }
   };
 
-  const enableEncryption = async (passphrase: string): Promise<void> => {
+  const enableEncryption = async (passphrase: string, rawMK?: Uint8Array): Promise<void> => {
     if (!userId) throw new Error("Not signed in");
 
     const salt = generateSalt();
-    const { mk: extractableMK, raw } = await generateMasterKey();
+    // Use caller-provided MK bytes (from recovery-key wizard) or generate fresh
+    let raw: Uint8Array;
+    let extractableMK: CryptoKey;
+    if (rawMK) {
+      raw = rawMK;
+      extractableMK = await crypto.subtle.importKey(
+        "raw",
+        new Uint8Array(raw),
+        { name: "AES-GCM", length: 256 },
+        true, // extractable: needed for wrapKey
+        ["encrypt", "decrypt"]
+      );
+    } else {
+      const generated = await generateMasterKey();
+      raw = generated.raw;
+      extractableMK = generated.mk;
+    }
 
     const kek = await deriveKEK(passphrase, salt);
     const wrappedMK = await wrapMasterKey(extractableMK, kek);

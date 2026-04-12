@@ -50,6 +50,7 @@ export function EncryptionSetup({ onComplete, onCancel }: Props) {
   const [confirm, setConfirm] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [recoveryWords, setRecoveryWords] = useState<string[]>([]);
+  const [rawMK, setRawMK] = useState<Uint8Array | null>(null);
   const [confirmWord, setConfirmWord] = useState("");
   // Which index (1-based) in the recovery phrase to confirm
   const [confirmIdx] = useState(() => Math.floor(Math.random() * 32) + 1);
@@ -68,15 +69,11 @@ export function EncryptionSetup({ onComplete, onCancel }: Props) {
     if (!passphraseValid) return;
     setLoading(true);
     try {
-      // Generate a fresh MK and encode as recovery words
-      // We hold the raw bytes here until the wizard completes
+      // Generate the MK that will actually be used for encryption.
+      // Hold the raw bytes until enableEncryption consumes them.
       const { raw } = await generateMasterKey();
       const words = encodeRecoveryKey(raw);
-      // Note: raw bytes will be re-generated during enableEncryption.
-      // This display is purely for the user to write down; the actual MK used
-      // for encryption is generated fresh inside enableEncryption.
-      // We zero these bytes now to avoid leaking them.
-      raw.fill(0);
+      setRawMK(raw); // held until handleConfirm passes it to enableEncryption
       setRecoveryWords(words);
       setStep("recovery");
     } finally {
@@ -99,13 +96,16 @@ export function EncryptionSetup({ onComplete, onCancel }: Props) {
     }
     setLoading(true);
     try {
-      await enableEncryption(passphrase);
+      await enableEncryption(passphrase, rawMK ?? undefined);
       onComplete();
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to enable encryption."
       );
     } finally {
+      // Zero raw MK bytes regardless of success/failure
+      rawMK?.fill(0);
+      setRawMK(null);
       setLoading(false);
     }
   };
