@@ -43,6 +43,15 @@ export type FirestoreIdeaDoc = Omit<Idea, "title" | "body" | "tags"> & {
   encrypted?: EncryptedEnvelope;
 };
 
+/** Tracks progress of a bulk encrypt/decrypt migration. */
+export type MigrationState = {
+  direction: "encrypt" | "decrypt";
+  total: number;
+  processed: number;
+  startedAt: string; // ISO timestamp
+  completedAt?: string;
+};
+
 /** Encryption prefs stored in userPrefs/{userId}.encryption */
 export type EncryptionPrefs = {
   enabled: boolean;
@@ -56,4 +65,5 @@ export type EncryptionPrefs = {
   };
   version: number; // schema version, starts at 1
   mkVersion: number; // increments on passphrase change (stdio server listener)
+  migrationState?: MigrationState;
 };
