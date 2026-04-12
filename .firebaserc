@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "mindraft-d1a3c"
+    "default": "mindraft-d1a3c",
+    "dev": "portfolio-7cb2b"
   }
 }

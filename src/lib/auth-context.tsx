@@ -9,12 +9,12 @@ import {
 } from "react";
 import {
   onAuthStateChanged,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
   signOut as firebaseSignOut,
   deleteUser,
   reauthenticateWithPopup,
   type User,
+  type AuthError,
 } from "firebase/auth";
 import {
   terminate,
@@ -57,34 +57,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     const auth = getAuthInstance();
-    let redirectSettled = false;
-    getRedirectResult(auth)
-      .then((result) => {
-        redirectSettled = true;
-        if (!result) setLoading(false);
-      })
-      .catch((err) => {
-        redirectSettled = true;
-        console.error("Google sign-in redirect failed:", err);
-        setLoading(false);
-      });
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
-      if (redirectSettled || user) setLoading(false);
+      setLoading(false);
     });
     return unsubscribe;
   }, []);
 
   const signInWithGoogle = async () => {
-    await signInWithRedirect(getAuthInstance(), googleProvider);
+    try {
+      await signInWithPopup(getAuthInstance(), googleProvider);
+    } catch (err) {
+      const code = (err as AuthError)?.code;
+      // User closed the popup — not an error worth surfacing.
+      if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") return;
+      console.error("Google sign-in failed:", err);
+    }
   };
 
   const signOut = async () => {
     await firebaseSignOut(getAuthInstance());
     await wipeFirestoreCache();
     // Hard-reload to drop all in-memory state (React tree, Firestore
-    // subscriptions, any cached user data) — belt-and-suspenders for
-    // shared-device scenarios.
+    // subscriptions, cached user data, and the in-memory encryption MK).
+    // CryptoProvider also zeros the MK when userId becomes null, but the
+    // hard reload is the definitive cleanup for shared-device scenarios.
     if (typeof window !== "undefined") {
       window.location.href = "/login";
     }

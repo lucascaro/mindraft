@@ -18,42 +18,74 @@ service cloud.firestore {
         return t is list && t.size() <= 30;
       }
 
+      // Validates the encrypted envelope shape: { v: int, title: string, body: string, tags: string }
+      function validEncryptedEnvelope(e) {
+        return e is map
+          && e.v is int
+          && e.title is string
+          && e.body is string
+          && e.tags is string
+          && e.keys().hasOnly(['v', 'title', 'body', 'tags']);
+      }
+
+      // True when the document carries plaintext content fields
+      function isPlaintext(d) {
+        return 'title' in d.keys() && 'body' in d.keys() && 'tags' in d.keys();
+      }
+
+      // True when the document carries an encrypted envelope
+      function isEncrypted(d) {
+        return 'encrypted' in d.keys();
+      }
+
       // Validates shape of a NEW document on create. Newly-created ideas
       // must not carry archive metadata — archiving only happens via a
       // later update, so the key list here deliberately excludes
-      // 'archived' and 'archivedAt'. Title is required to be non-empty.
+      // 'archived' and 'archivedAt'. Accepts either plaintext OR
+      // encrypted envelope, not both.
       function validCreate() {
         let d = request.resource.data;
-        return d.userId == request.auth.uid
-          && d.title is string && d.title.size() >= 1 && d.title.size() <= 500
-          && d.body is string && d.body.size() <= 50000
-          && validTags(d.tags)
+        let baseCond = d.userId == request.auth.uid
           && validStatus(d.status)
           && d.createdAt is timestamp
           && d.updatedAt is timestamp
-          && d.keys().hasOnly(['userId', 'title', 'body', 'tags', 'status', 'createdAt', 'updatedAt', 'sortOrder', 'refineNext'])
           && (!('sortOrder' in d.keys()) || d.sortOrder is number)
           && (!('refineNext' in d.keys()) || d.refineNext is bool);
+        let plaintextCond = isPlaintext(d) && !isEncrypted(d)
+          && d.title is string && d.title.size() >= 1 && d.title.size() <= 500
+          && d.body is string && d.body.size() <= 50000
+          && validTags(d.tags)
+          && d.keys().hasOnly(['userId', 'title', 'body', 'tags', 'status', 'createdAt', 'updatedAt', 'sortOrder', 'refineNext']);
+        let encryptedCond = isEncrypted(d) && !isPlaintext(d)
+          && validEncryptedEnvelope(d.encrypted)
+          && d.keys().hasOnly(['userId', 'encrypted', 'status', 'createdAt', 'updatedAt', 'sortOrder', 'refineNext']);
+        return baseCond && (plaintextCond || encryptedCond);
       }
 
       // Validates an update. `request.resource.data` is the full merged
       // document after the update, so every required field is always
       // present and can be validated unconditionally.
+      // Accepts either plaintext OR encrypted envelope, not both.
       function validUpdate() {
         let d = request.resource.data;
         let prev = resource.data;
-        return d.userId == prev.userId
+        let baseCond = d.userId == prev.userId
           && d.createdAt == prev.createdAt
           && d.updatedAt is timestamp
-          && d.title is string && d.title.size() >= 1 && d.title.size() <= 500
-          && d.body is string && d.body.size() <= 50000
-          && validTags(d.tags)
           && validStatus(d.status)
-          && d.keys().hasOnly(['userId', 'title', 'body', 'tags', 'status', 'createdAt', 'updatedAt', 'archived', 'archivedAt', 'sortOrder', 'refineNext'])
           && (!('archived' in d.keys()) || d.archived is bool)
           && (!('archivedAt' in d.keys()) || d.archivedAt is timestamp)
           && (!('sortOrder' in d.keys()) || d.sortOrder is number)
           && (!('refineNext' in d.keys()) || d.refineNext is bool);
+        let plaintextCond = isPlaintext(d) && !isEncrypted(d)
+          && d.title is string && d.title.size() >= 1 && d.title.size() <= 500
+          && d.body is string && d.body.size() <= 50000
+          && validTags(d.tags)
+          && d.keys().hasOnly(['userId', 'title', 'body', 'tags', 'status', 'createdAt', 'updatedAt', 'archived', 'archivedAt', 'sortOrder', 'refineNext']);
+        let encryptedCond = isEncrypted(d) && !isPlaintext(d)
+          && validEncryptedEnvelope(d.encrypted)
+          && d.keys().hasOnly(['userId', 'encrypted', 'status', 'createdAt', 'updatedAt', 'archived', 'archivedAt', 'sortOrder', 'refineNext']);
+        return baseCond && (plaintextCond || encryptedCond);
       }
 
       allow read: if isOwner();

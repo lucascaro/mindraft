@@ -4,8 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useCrypto } from "@/lib/crypto-context";
 import { exportAllIdeas } from "@/lib/firestore";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { EncryptionSetup } from "@/components/encryption-setup";
 import {
   ArrowLeft,
   Bot,
@@ -13,6 +16,7 @@ import {
   Copy,
   Download,
   ExternalLink,
+  Lock,
   Loader2,
   Trash2,
   User as UserIcon,
@@ -20,6 +24,7 @@ import {
 
 export default function SettingsPage() {
   const { user, loading, deleteAccount } = useAuth();
+  const { mk, encryptionEnabled, disableEncryption } = useCrypto();
   const router = useRouter();
   const [exporting, setExporting] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -27,6 +32,12 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [copiedConfig, setCopiedConfig] = useState(false);
+  const [showEncryptionSetup, setShowEncryptionSetup] = useState(false);
+  const [confirmingDisableEncryption, setConfirmingDisableEncryption] =
+    useState(false);
+  const [disablePassphrase, setDisablePassphrase] = useState("");
+  const [disablingEncryption, setDisablingEncryption] = useState(false);
+  const [encryptionError, setEncryptionError] = useState<string | null>(null);
 
   const mcpUrl =
     typeof window !== "undefined"
@@ -57,7 +68,7 @@ export default function SettingsPage() {
     setError(null);
     setExporting(true);
     try {
-      const ideas = await exportAllIdeas(user.uid);
+      const ideas = await exportAllIdeas(user.uid, mk);
       // Convert Firestore Timestamps to ISO strings for portability.
       const serializable = ideas.map((i) => ({
         ...i,
@@ -91,6 +102,20 @@ export default function SettingsPage() {
       console.error(err);
     } finally {
       setExporting(false);
+    }
+  };
+
+  const handleDisableEncryption = async () => {
+    setEncryptionError(null);
+    setDisablingEncryption(true);
+    try {
+      await disableEncryption(disablePassphrase);
+      setConfirmingDisableEncryption(false);
+      setDisablePassphrase("");
+    } catch {
+      setEncryptionError("Incorrect passphrase. Please try again.");
+    } finally {
+      setDisablingEncryption(false);
     }
   };
 
@@ -193,6 +218,114 @@ export default function SettingsPage() {
               </>
             )}
           </Button>
+        </section>
+
+        {/* End-to-End Encryption */}
+        <section className="rounded-lg border bg-card p-5">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-2">
+            <Lock className="h-4 w-4" />
+            End-to-End Encryption
+          </h2>
+
+          {showEncryptionSetup ? (
+            <EncryptionSetup
+              onComplete={() => setShowEncryptionSetup(false)}
+              onCancel={() => setShowEncryptionSetup(false)}
+            />
+          ) : encryptionEnabled ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-sm">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 dark:bg-green-900/30 px-2.5 py-0.5 text-xs font-medium text-green-700 dark:text-green-400">
+                  <Check className="h-3 w-3" /> Active
+                </span>
+                <span className="text-muted-foreground">
+                  Your note content is end-to-end encrypted.
+                </span>
+              </div>
+
+              {!confirmingDisableEncryption ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setConfirmingDisableEncryption(true);
+                    setEncryptionError(null);
+                  }}
+                  className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                >
+                  Disable encryption
+                </Button>
+              ) : (
+                <div className="space-y-2 rounded-lg border border-destructive/30 p-3">
+                  <p className="text-sm text-muted-foreground">
+                    Enter your passphrase to confirm. This will mark encryption
+                    as disabled but{" "}
+                    <strong className="text-foreground">
+                      will not automatically decrypt your existing notes
+                    </strong>
+                    . Use the migration tool (coming soon) to restore plaintext.
+                  </p>
+                  <Input
+                    type="password"
+                    placeholder="Current passphrase"
+                    value={disablePassphrase}
+                    onChange={(e) => setDisablePassphrase(e.target.value)}
+                    autoComplete="current-password"
+                  />
+                  {encryptionError && (
+                    <p className="text-sm text-destructive" role="alert">
+                      {encryptionError}
+                    </p>
+                  )}
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setConfirmingDisableEncryption(false);
+                        setDisablePassphrase("");
+                        setEncryptionError(null);
+                      }}
+                      disabled={disablingEncryption}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleDisableEncryption}
+                      disabled={!disablePassphrase || disablingEncryption}
+                    >
+                      {disablingEncryption ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                          Disabling…
+                        </>
+                      ) : (
+                        "Confirm disable"
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Encrypt your note content so only you can read it — not even
+                the developer or Google. Encryption is opt-in and requires a
+                passphrase each session.
+              </p>
+              <Button
+                variant="outline"
+                onClick={() => setShowEncryptionSetup(true)}
+                className="w-full sm:w-auto"
+              >
+                <Lock className="h-4 w-4 mr-2" />
+                Enable end-to-end encryption
+              </Button>
+            </div>
+          )}
         </section>
 
         {/* AI Agent / MCP */}

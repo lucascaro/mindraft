@@ -5,8 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { addIdea } from "@/lib/firestore";
+import { useCrypto } from "@/lib/crypto-context";
 
 export function QuickCapture({ userId }: { userId: string }) {
+  const { mk } = useCrypto();
   const [title, setTitle] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -17,7 +19,7 @@ export function QuickCapture({ userId }: { userId: string }) {
 
     setSubmitting(true);
     try {
-      await addIdea(userId, trimmed);
+      await addIdea(userId, trimmed, "", mk);
       setTitle("");
     } catch (err) {
       console.error("Failed to add idea:", err);

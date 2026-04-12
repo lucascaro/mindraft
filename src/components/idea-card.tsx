@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { TagBadge } from "@/components/tag-badge";
-import { Archive, ArchiveRestore, Crosshair, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Archive, ArchiveRestore, Crosshair, Lock, Pencil, Plus, Trash2, X } from "lucide-react";
 import { updateIdea, deleteIdea, archiveIdea, restoreIdea } from "@/lib/firestore";
+import { useCrypto } from "@/lib/crypto-context";
 import { Idea, IdeaStatus, IDEA_STATUSES } from "@/lib/types";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -32,6 +33,7 @@ export function IdeaCard({
   onExpand: () => void;
   onCollapse: () => void;
 }) {
+  const { mk, encryptionEnabled } = useCrypto();
   const [title, setTitle] = useState(idea.title);
   const [body, setBody] = useState(idea.body);
   const [tags, setTags] = useState(idea.tags);
@@ -49,7 +51,7 @@ export function IdeaCard({
   latestRef.current = { title, body, status };
 
   const save = (updates: Partial<Omit<Idea, "id" | "createdAt" | "userId">>) => {
-    updateIdea(idea.id, updates).catch((err) =>
+    updateIdea(idea.id, updates, { mk, currentIdea: idea }).catch((err) =>
       console.error("Failed to save:", err)
     );
   };
@@ -155,7 +157,10 @@ export function IdeaCard({
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           {/* Title: always an input with stable width */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 flex items-center gap-1.5">
+            {encryptionEnabled && (
+              <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" aria-hidden="true" />
+            )}
             <Input
               value={expanded ? title : idea.title}
               onChange={(e) => setTitle(e.target.value)}
@@ -195,7 +200,7 @@ export function IdeaCard({
                     updateIdea(idea.id, {
                       refineNext: !idea.refineNext,
                       ...(!idea.refineNext && { sortOrder: -1 }),
-                    });
+                    }, { mk, currentIdea: idea });
                   }}
                 >
                   <Crosshair className="h-4 w-4" />

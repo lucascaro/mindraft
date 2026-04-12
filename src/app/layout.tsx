@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { AuthProvider } from "@/lib/auth-context";
 import { ThemeProvider } from "@/lib/theme-context";
 import { TagColorProvider } from "@/lib/tag-color-context";
+import { CryptoWrapper } from "@/components/crypto-wrapper";
 import { InstallPrompt } from "@/components/install-prompt";
 import { ServiceWorkerRegistrar } from "@/components/sw-registrar";
 import { THEME_INIT_SCRIPT } from "@/lib/theme-init-script";
@@ -67,7 +68,9 @@ export default async function RootLayout({
         </a>
         <ThemeProvider>
           <AuthProvider>
-            <TagColorProvider>{children}</TagColorProvider>
+            <CryptoWrapper>
+              <TagColorProvider>{children}</TagColorProvider>
+            </CryptoWrapper>
           </AuthProvider>
           <InstallPrompt />
           <ServiceWorkerRegistrar />

@@ -3,6 +3,7 @@ import { fn } from "storybook/test";
 import { IdeaCard } from "../idea-card";
 import { ThemeProvider } from "@/lib/theme-context";
 import { TagColorProvider } from "@/lib/tag-color-context";
+import { MockCryptoProvider } from "./mock-crypto-provider";
 import type { Idea } from "@/lib/types";
 
 function mockTimestamp(date = new Date()) {
@@ -34,11 +35,13 @@ const meta: Meta<typeof IdeaCard> = {
   decorators: [
     (Story) => (
       <ThemeProvider>
-        <TagColorProvider>
-          <div style={{ maxWidth: 672, margin: "0 auto", padding: 16 }}>
-            <Story />
-          </div>
-        </TagColorProvider>
+        <MockCryptoProvider>
+          <TagColorProvider>
+            <div style={{ maxWidth: 672, margin: "0 auto", padding: 16 }}>
+              <Story />
+            </div>
+          </TagColorProvider>
+        </MockCryptoProvider>
       </ThemeProvider>
     ),
   ],

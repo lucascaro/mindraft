@@ -14,10 +14,48 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { getDb } from "./firebase";
-import { Idea } from "./types";
+import { encryptIdea, decryptIdea } from "./crypto";
+import type { Idea, FirestoreIdeaDoc } from "./types";
 
 const COLLECTION = "ideas";
 const PREFS_COLLECTION = "userPrefs";
+
+// ── Encryption helpers ─────────────────────────────────────────────────────
+
+/** Content fields that are encrypted in the envelope. */
+const CONTENT_FIELDS = ["title", "body", "tags"] as const;
+
+function hasContentFields(
+  data: Record<string, unknown>
+): boolean {
+  return CONTENT_FIELDS.some((f) => f in data);
+}
+
+/**
+ * Decrypt a batch of Firestore docs, handling both encrypted and plaintext.
+ * When mk is null, encrypted docs get placeholder values.
+ */
+async function decryptDocs(
+  docs: FirestoreIdeaDoc[],
+  mk: CryptoKey | null
+): Promise<Idea[]> {
+  return Promise.all(
+    docs.map(async (d) => {
+      if (!d.encrypted) return d as unknown as Idea;
+      if (!mk) {
+        // Locked state: show placeholders
+        const { encrypted: _, ...rest } = d;
+        return {
+          ...rest,
+          title: "[encrypted]",
+          body: "",
+          tags: [],
+        } as Idea;
+      }
+      return decryptIdea(mk, d);
+    })
+  );
+}
 
 type IdeaFilter = "active" | "archived";
 
@@ -73,7 +111,8 @@ function sortByArchivedAt(ideas: Idea[]) {
 export function subscribeToIdeas(
   userId: string,
   callback: (ideas: Idea[]) => void,
-  filter: IdeaFilter = "active"
+  filter: IdeaFilter = "active",
+  mk: CryptoKey | null = null
 ) {
   const q = query(
     collection(getDb(), COLLECTION),
@@ -81,40 +120,97 @@ export function subscribeToIdeas(
   );
 
   return onSnapshot(q, (snapshot) => {
-    const all = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }) as Idea);
+    const rawDocs = snapshot.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+    }) as FirestoreIdeaDoc);
 
-    if (filter === "active") {
-      callback(sortBySortOrder(all.filter((i) => !i.archived)));
-    } else {
-      callback(sortByArchivedAt(all.filter((i) => i.archived === true)));
-    }
+    const filtered =
+      filter === "active"
+        ? rawDocs.filter((i) => !i.archived)
+        : rawDocs.filter((i) => i.archived === true);
+
+    decryptDocs(filtered, mk).then((ideas) => {
+      if (filter === "active") {
+        callback(sortBySortOrder(ideas));
+      } else {
+        callback(sortByArchivedAt(ideas));
+      }
+    });
   });
 }
 
 export async function addIdea(
   userId: string,
   title: string,
-  body: string = ""
+  body: string = "",
+  mk: CryptoKey | null = null
 ) {
-  return addDoc(collection(getDb(), COLLECTION), {
-    title,
-    body,
-    tags: [],
-    status: "raw",
+  // Pre-generate doc ID so we have it for AAD when encrypting
+  const ref = doc(collection(getDb(), COLLECTION));
+
+  const baseDoc = {
+    status: "raw" as const,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     userId,
-  });
+  };
+
+  if (mk) {
+    // Build a temp Idea for encryptIdea (needs id, title, body, tags, userId)
+    const tempIdea = {
+      id: ref.id,
+      title,
+      body,
+      tags: [] as string[],
+      userId,
+    } as Idea;
+    const encrypted = await encryptIdea(mk, tempIdea);
+    // encrypted has { encrypted: {...}, ...rest } — extract just the envelope
+    await setDoc(ref, {
+      ...baseDoc,
+      encrypted: encrypted.encrypted,
+    });
+  } else {
+    await setDoc(ref, {
+      ...baseDoc,
+      title,
+      body,
+      tags: [],
+    });
+  }
+
+  return { id: ref.id };
 }
 
 export async function updateIdea(
   id: string,
-  data: Partial<Omit<Idea, "id" | "createdAt" | "userId">>
+  data: Partial<Omit<Idea, "id" | "createdAt" | "userId">>,
+  opts?: { mk?: CryptoKey | null; currentIdea?: Idea }
 ) {
   const ref = doc(getDb(), COLLECTION, id);
+  const mk = opts?.mk ?? null;
+
+  if (mk && hasContentFields(data) && opts?.currentIdea) {
+    // Merge partial update into current idea, then encrypt the full envelope
+    const merged: Idea = { ...opts.currentIdea, ...data };
+    const encrypted = await encryptIdea(mk, merged);
+
+    // Build update: non-content fields from data + encrypted envelope
+    const nonContent: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (!(CONTENT_FIELDS as readonly string[]).includes(key)) {
+        nonContent[key] = value;
+      }
+    }
+
+    return updateDoc(ref, {
+      ...nonContent,
+      encrypted: encrypted.encrypted,
+      updatedAt: serverTimestamp(),
+    });
+  }
+
   return updateDoc(ref, {
     ...data,
     updatedAt: serverTimestamp(),
@@ -182,20 +278,24 @@ export async function setTagColor(
  * One-shot fetch of every idea (active and archived) owned by the user.
  * Used by the data export feature in Settings. Sorted newest-first.
  */
-export async function exportAllIdeas(userId: string): Promise<Idea[]> {
+export async function exportAllIdeas(
+  userId: string,
+  mk: CryptoKey | null = null
+): Promise<Idea[]> {
   const q = query(
     collection(getDb(), COLLECTION),
     where("userId", "==", userId)
   );
   const snap = await getDocs(q);
-  const all = snap.docs.map(
+  const rawDocs = snap.docs.map(
     (d) =>
       ({
         id: d.id,
         ...d.data(),
-      }) as Idea
+      }) as FirestoreIdeaDoc
   );
-  return sortByCreatedAt(all);
+  const ideas = await decryptDocs(rawDocs, mk);
+  return sortByCreatedAt(ideas);
 }
 
 /**

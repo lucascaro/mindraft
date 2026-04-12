@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useCrypto } from "@/lib/crypto-context";
 import { subscribeToIdeas } from "@/lib/firestore";
 import { IdeaCard } from "@/components/idea-card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { Idea } from "@/lib/types";
 
 export default function ArchivePage() {
   const { user, loading } = useAuth();
+  const { mk } = useCrypto();
   const router = useRouter();
   const [ideas, setIdeas] = useState<Idea[] | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -24,9 +26,9 @@ export default function ArchivePage() {
 
   useEffect(() => {
     if (!user) return;
-    const unsubscribe = subscribeToIdeas(user.uid, setIdeas, "archived");
+    const unsubscribe = subscribeToIdeas(user.uid, setIdeas, "archived", mk);
     return unsubscribe;
-  }, [user]);
+  }, [user, mk]);
 
   const showSkeleton = loading || !user || ideas === null;
 
