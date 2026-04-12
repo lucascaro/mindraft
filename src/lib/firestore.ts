@@ -377,7 +377,7 @@ export async function migrateToEncrypted(
     const batch = writeBatch(getDb());
     const chunk = plaintextDocs.slice(i, i + CHUNK);
 
-    // Encrypt all docs in this chunk in parallel, then add to batch
+    // Encrypt all docs in this chunk in parallel, verify round-trip, then batch
     const encrypted = await Promise.all(
       chunk.map(async (d) => {
         const data = d.data();
@@ -388,7 +388,26 @@ export async function migrateToEncrypted(
           body: data.body ?? "",
           tags: data.tags ?? [],
         } as Idea;
-        return { ref: d.ref, envelope: await encryptIdea(mk, idea) };
+        const envelope = await encryptIdea(mk, idea);
+
+        // Verify: decrypt the envelope to confirm it round-trips before committing
+        const readbackDoc: FirestoreIdeaDoc = {
+          id: d.id,
+          userId: idea.userId,
+          encrypted: envelope.encrypted,
+          status: idea.status,
+          createdAt: idea.createdAt,
+          updatedAt: idea.updatedAt,
+        };
+        const verified = await decryptIdea(mk, readbackDoc);
+        if (verified.title !== idea.title || verified.body !== idea.body) {
+          throw new Error(
+            `Migration verification failed for doc ${d.id}: ` +
+            `title match=${verified.title === idea.title}, body match=${verified.body === idea.body}`
+          );
+        }
+
+        return { ref: d.ref, envelope };
       })
     );
 
