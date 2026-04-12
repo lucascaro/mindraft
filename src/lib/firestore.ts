@@ -52,7 +52,22 @@ async function decryptDocs(
           tags: [],
         } as Idea;
       }
-      return decryptIdea(mk, d);
+      try {
+        return await decryptIdea(mk, d);
+      } catch (err) {
+        // Decryption failed — likely encrypted with a different MK
+        // (e.g., user disabled then re-enabled encryption).
+        // Show placeholder instead of crashing the entire list.
+        console.warn(`Failed to decrypt doc ${d.id}:`, err);
+        const { encrypted: _, ...rest } = d;
+        return {
+          ...rest,
+          title: "\u26a0\ufe0f Decryption failed",
+          body: "This note may have been encrypted with a different passphrase or key. "
+            + "If you recently re-enabled encryption, notes from the previous session cannot be recovered with the current key.",
+          tags: [],
+        } as Idea;
+      }
     })
   );
 }
