@@ -363,7 +363,12 @@ export function IdeaCard({
                     </ReactMarkdown>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground italic">No description yet.</p>
+                  <p
+                    className={`text-sm text-muted-foreground italic${mode === "active" ? " cursor-pointer hover:text-foreground transition-colors" : ""}`}
+                    onClick={(e) => { if (mode === "active") { e.stopPropagation(); setEditMode(true); } }}
+                  >
+                    {mode === "active" ? "No description yet. Click to add one." : "No description yet."}
+                  </p>
                 )}
 
                 {tags.length > 0 && (

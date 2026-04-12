@@ -75,6 +75,33 @@ describe("IdeaCard", () => {
     expect(onExpand).toHaveBeenCalledTimes(1);
   });
 
+  it("clicking 'No description yet' on an expanded idea with no body enters edit mode", () => {
+    const { getByText, getByRole } = render(
+      <IdeaCard
+        idea={mockIdea({ body: "" })}
+        expanded={true}
+        onExpand={vi.fn()}
+        onCollapse={vi.fn()}
+      />
+    );
+    fireEvent.click(getByText(/No description yet/));
+    getByRole("textbox", { name: "Idea body" });
+  });
+
+  it("does not enter edit mode when clicking placeholder on archived idea", () => {
+    const { getByText, queryByRole } = render(
+      <IdeaCard
+        idea={mockIdea({ body: "" })}
+        expanded={true}
+        mode="archived"
+        onExpand={vi.fn()}
+        onCollapse={vi.fn()}
+      />
+    );
+    fireEvent.click(getByText(/No description yet/));
+    expect(queryByRole("textbox", { name: "Idea body" })).toBeNull();
+  });
+
   describe("Save behavior (active)", () => {
     beforeEach(() => {
       vi.mocked(firestore.updateIdea).mockClear();
