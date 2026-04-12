@@ -11,6 +11,7 @@ const dirname = typeof __dirname !== 'undefined' ? __dirname : path.dirname(file
 export default defineConfig({
   plugins: [tsconfigPaths(), react()],
   test: {
+    exclude: ["e2e/**", "node_modules/**", ".claude/**"],
     projects: [{
       extends: true,
       test: {
@@ -18,7 +19,6 @@ export default defineConfig({
         globals: true,
         setupFiles: ["./src/test/setup.ts"],
         css: false,
-        exclude: ["e2e/**", "node_modules/**", ".worktrees/**"]
       }
     }, {
       extends: true,
