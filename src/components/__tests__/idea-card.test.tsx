@@ -118,7 +118,7 @@ describe("IdeaCard", () => {
 
     it("does NOT auto-save on close — does not call updateIdea when closing without changes", () => {
       const { getAllByLabelText, onCollapse } = renderEditing();
-      fireEvent.click(getAllByLabelText("Close idea")[0]);
+      fireEvent.click(getAllByLabelText("Close idea")[1]);
       expect(firestore.updateIdea).not.toHaveBeenCalled();
       expect(onCollapse).toHaveBeenCalledTimes(1);
     });
@@ -128,7 +128,7 @@ describe("IdeaCard", () => {
       fireEvent.change(getByRole("textbox", { name: "Idea body" }), {
         target: { value: "dirty" },
       });
-      fireEvent.click(getAllByLabelText("Close idea")[0]);
+      fireEvent.click(getAllByLabelText("Close idea")[1]);
       expect(getByText("Unsaved changes")).toBeDefined();
       expect(onCollapse).not.toHaveBeenCalled();
     });
@@ -138,10 +138,40 @@ describe("IdeaCard", () => {
       fireEvent.change(getByRole("textbox", { name: "Idea body" }), {
         target: { value: "dirty" },
       });
-      fireEvent.click(getAllByLabelText("Close idea")[0]);
+      fireEvent.click(getAllByLabelText("Close idea")[1]);
       fireEvent.click(getByRole("button", { name: "Discard" }));
       expect(firestore.updateIdea).not.toHaveBeenCalled();
       expect(onCollapse).toHaveBeenCalledTimes(1);
+    });
+
+    it("Cmd+Enter saves pending changes and exits edit mode", async () => {
+      const { getByRole, queryByLabelText } = renderEditing();
+      fireEvent.change(getByRole("textbox", { name: "Idea body" }), {
+        target: { value: "cmd-enter save" },
+      });
+      fireEvent.keyDown(document, { key: "Enter", metaKey: true });
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(firestore.updateIdea).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(firestore.updateIdea).mock.calls[0][1]).toEqual({ body: "cmd-enter save" });
+      expect(queryByLabelText("Edit idea")).not.toBeNull();
+    });
+
+    it("Archive while dirty saves pending changes first, then archives", async () => {
+      const { getByRole, container } = renderEditing();
+      fireEvent.change(getByRole("textbox", { name: "Idea body" }), {
+        target: { value: "save-before-archive" },
+      });
+      const expanded = container.querySelector("[aria-expanded='true']") as HTMLElement;
+      fireEvent.click(within(expanded).getByRole("button", { name: /Archive/i }));
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(firestore.updateIdea).toHaveBeenCalledTimes(1);
+      expect(firestore.archiveIdea).toHaveBeenCalledWith("test-1");
+      // updateIdea was called before archiveIdea
+      const updateOrder = vi.mocked(firestore.updateIdea).mock.invocationCallOrder[0];
+      const archiveOrder = vi.mocked(firestore.archiveIdea).mock.invocationCallOrder[0];
+      expect(updateOrder).toBeLessThan(archiveOrder);
     });
 
     it("Save from unsaved-changes prompt persists then collapses", async () => {
@@ -149,7 +179,7 @@ describe("IdeaCard", () => {
       fireEvent.change(getByRole("textbox", { name: "Idea body" }), {
         target: { value: "dirty" },
       });
-      fireEvent.click(getAllByLabelText("Close idea")[0]);
+      fireEvent.click(getAllByLabelText("Close idea")[1]);
       // The Save inside the prompt is the only enabled "Save" button at this point
       fireEvent.click(getByRole("button", { name: "Save" }));
       // Flush microtasks for awaited save then the synchronous follow-ups

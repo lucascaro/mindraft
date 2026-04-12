@@ -47,10 +47,13 @@ export function IdeaCard({
   const [editHeight, setEditHeight] = useState(0);
   const wasExpanded = useRef(expanded);
 
-  const save = (updates: Partial<Omit<Idea, "id" | "createdAt" | "userId">>) =>
-    updateIdea(idea.id, updates, { mk, currentIdea: idea }).catch((err) => {
-      console.error("Failed to save:", err);
-    });
+  const save = useCallback(
+    (updates: Partial<Omit<Idea, "id" | "createdAt" | "userId">>) =>
+      updateIdea(idea.id, updates, { mk, currentIdea: idea }).catch((err) => {
+        console.error("Failed to save:", err);
+      }),
+    [idea, mk]
+  );
 
   const tagsChanged = useCallback(
     (a: string[], b: string[]) => a.length !== b.length || a.some((t, i) => t !== b[i]),
@@ -87,9 +90,7 @@ export function IdeaCard({
     const changes = collectChanges();
     if (Object.keys(changes).length === 0) return Promise.resolve();
     return save(changes);
-  // `save` is stable enough; collectChanges captures all relevant deps.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [collectChanges]);
+  }, [collectChanges, save]);
 
   // On external collapse (expanded → false), reset local state without saving.
   useEffect(() => {
@@ -116,11 +117,11 @@ export function IdeaCard({
   // Cmd+Enter (or Ctrl+Enter): save & exit edit mode if editing, else close.
   useEffect(() => {
     if (!expanded) return;
-    const handler = (e: KeyboardEvent) => {
+    const handler = async (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
         e.preventDefault();
         if (editMode) {
-          if (isDirty) saveAllChanges();
+          if (isDirty) await saveAllChanges();
           setEditMode(false);
         } else {
           onCollapse();
@@ -386,7 +387,7 @@ export function IdeaCard({
                       <Archive className="h-4 w-4 mr-1" /> Archive
                     </Button>
                   ) : confirmingDelete ? (
-                    <div className="flex gap-2 items-center w-full justify-between">
+                    <div role="alertdialog" aria-label="Confirm delete" className="flex gap-2 items-center w-full justify-between">
                       <span className="text-sm text-muted-foreground">
                         Delete permanently?
                       </span>
@@ -530,7 +531,7 @@ export function IdeaCard({
 
                 <div className="pt-2 border-t flex justify-between items-center gap-2">
                   {confirmingClose ? (
-                    <div className="flex gap-2 items-center w-full justify-between">
+                    <div role="alertdialog" aria-label="Unsaved changes" className="flex gap-2 items-center w-full justify-between">
                       <span className="text-sm text-muted-foreground">
                         Unsaved changes
                       </span>
@@ -574,7 +575,7 @@ export function IdeaCard({
                       </div>
                     </div>
                   ) : confirmingDelete ? (
-                    <div className="flex gap-2 items-center w-full justify-between">
+                    <div role="alertdialog" aria-label="Confirm delete" className="flex gap-2 items-center w-full justify-between">
                       <span className="text-sm text-muted-foreground">
                         Delete permanently?
                       </span>
@@ -633,9 +634,9 @@ export function IdeaCard({
                         variant="default"
                         size="sm"
                         disabled={!isDirty}
-                        onClick={(e) => {
+                        onClick={async (e) => {
                           e.stopPropagation();
-                          saveAllChanges();
+                          await saveAllChanges();
                           setEditMode(false);
                         }}
                       >
