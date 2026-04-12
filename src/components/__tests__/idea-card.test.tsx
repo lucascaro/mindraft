@@ -75,6 +75,19 @@ describe("IdeaCard", () => {
     expect(onExpand).toHaveBeenCalledTimes(1);
   });
 
+  it("clicking 'No description yet' on an expanded idea with no body enters edit mode", () => {
+    const { getByText, getByRole } = render(
+      <IdeaCard
+        idea={mockIdea({ body: "" })}
+        expanded={true}
+        onExpand={vi.fn()}
+        onCollapse={vi.fn()}
+      />
+    );
+    fireEvent.click(getByText(/No description yet/));
+    expect(getByRole("textbox", { name: "Idea body" })).toBeTruthy();
+  });
+
   describe("Save behavior (active)", () => {
     beforeEach(() => {
       vi.mocked(firestore.updateIdea).mockClear();
