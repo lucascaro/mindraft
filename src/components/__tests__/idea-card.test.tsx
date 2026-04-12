@@ -85,7 +85,21 @@ describe("IdeaCard", () => {
       />
     );
     fireEvent.click(getByText(/No description yet/));
-    expect(getByRole("textbox", { name: "Idea body" })).toBeTruthy();
+    getByRole("textbox", { name: "Idea body" });
+  });
+
+  it("does not enter edit mode when clicking placeholder on archived idea", () => {
+    const { getByText, queryByRole } = render(
+      <IdeaCard
+        idea={mockIdea({ body: "" })}
+        expanded={true}
+        mode="archived"
+        onExpand={vi.fn()}
+        onCollapse={vi.fn()}
+      />
+    );
+    fireEvent.click(getByText(/No description yet/));
+    expect(queryByRole("textbox", { name: "Idea body" })).toBeNull();
   });
 
   describe("Save behavior (active)", () => {
