@@ -56,3 +56,6 @@ storybook-static
 /test-results/
 /playwright-report/
 /blob-report/
+
+# hive worktrees
+.worktrees
