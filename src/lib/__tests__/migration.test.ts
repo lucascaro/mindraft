@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from "vitest";
 import { generateMasterKey, encryptIdea } from "@/lib/crypto";
-import type { Idea, FirestoreIdeaDoc } from "@/lib/types";
+import type { Idea } from "@/lib/types";
 
 // ── Firestore mocks ───────────────────────────────────────────────────────
 

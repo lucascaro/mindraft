@@ -29,7 +29,7 @@ import {
 
 export default function SettingsPage() {
   const { user, loading, deleteAccount } = useAuth();
-  const { mk, encryptionEnabled, disableEncryption } = useCrypto();
+  const { mk, encryptionEnabled, disableEncryption, unlock } = useCrypto();
   const router = useRouter();
   const [exporting, setExporting] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -81,15 +81,26 @@ export default function SettingsPage() {
 
   // Count plaintext vs encrypted docs when encryption is enabled
   useEffect(() => {
+    let cancelled = false;
+
     if (!user || !encryptionEnabled) {
       setPlaintextCount(null);
       setEncryptedCount(null);
-      return;
+      return () => { cancelled = true; };
     }
-    countEncryptionStatus(user.uid).then(({ plaintext, encrypted }) => {
-      setPlaintextCount(plaintext);
-      setEncryptedCount(encrypted);
-    });
+
+    countEncryptionStatus(user.uid)
+      .then(({ plaintext, encrypted }) => {
+        if (cancelled) return;
+        setPlaintextCount(plaintext);
+        setEncryptedCount(encrypted);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error("Failed to count encryption status:", err);
+      });
+
+    return () => { cancelled = true; };
   }, [user, encryptionEnabled]);
 
   const handleExport = async () => {
@@ -368,7 +379,14 @@ export default function SettingsPage() {
                       {migrationProgress.total}
                     </span>
                   </div>
-                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-2 rounded-full bg-muted overflow-hidden"
+                    role="progressbar"
+                    aria-valuenow={migrationProgress.processed}
+                    aria-valuemin={0}
+                    aria-valuemax={migrationProgress.total}
+                    aria-label="Encryption migration progress"
+                  >
                     <div
                       className="h-full bg-primary rounded-full transition-all"
                       style={{
@@ -447,9 +465,21 @@ export default function SettingsPage() {
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() => {
+                      onClick={async () => {
                         if (encryptedCount && encryptedCount > 0) {
-                          setShowDecryptOption(true);
+                          // Verify passphrase before showing decrypt option
+                          setDisablingEncryption(true);
+                          setEncryptionError(null);
+                          try {
+                            const valid = await unlock(disablePassphrase);
+                            if (!valid) {
+                              setEncryptionError("Incorrect passphrase. Please try again.");
+                              return;
+                            }
+                            setShowDecryptOption(true);
+                          } finally {
+                            setDisablingEncryption(false);
+                          }
                         } else {
                           handleDisableEncryption();
                         }
@@ -459,7 +489,7 @@ export default function SettingsPage() {
                       {disablingEncryption ? (
                         <>
                           <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                          Disabling…
+                          Verifying…
                         </>
                       ) : (
                         "Continue"
@@ -488,7 +518,14 @@ export default function SettingsPage() {
                           {migrationProgress.total}
                         </span>
                       </div>
-                      <div className="h-2 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-2 rounded-full bg-muted overflow-hidden"
+                        role="progressbar"
+                        aria-valuenow={migrationProgress.processed}
+                        aria-valuemin={0}
+                        aria-valuemax={migrationProgress.total}
+                        aria-label="Decryption migration progress"
+                      >
                         <div
                           className="h-full bg-primary rounded-full transition-all"
                           style={{
